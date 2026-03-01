@@ -28,6 +28,14 @@ class PF_Frontend {
             PF_VERSION,
             true
         );
+
+        wp_register_script(
+            'pf-add-to-cart',
+            PF_PLUGIN_URL . 'frontend/js/pf-add-to-cart.js',
+            array( 'jquery' ),
+            PF_VERSION,
+            true
+        );
     }
 
     public function render_shortcode( $atts ) {
@@ -56,6 +64,14 @@ class PF_Frontend {
 
         wp_enqueue_style( 'pf-frontend' );
         wp_enqueue_script( 'pf-frontend' );
+        wp_enqueue_script( 'pf-add-to-cart' );
+
+        // Pre-load WooCommerce variation scripts – results may contain
+        // variable products with swatch widgets that need these.
+        if ( function_exists( 'WC' ) ) {
+            wp_enqueue_script( 'wc-add-to-cart' );
+            wp_enqueue_script( 'wc-add-to-cart-variation' );
+        }
 
         wp_localize_script( 'pf-frontend', 'pfFrontend', array(
             'ajax_url'  => admin_url( 'admin-ajax.php' ),

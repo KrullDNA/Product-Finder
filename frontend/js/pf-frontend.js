@@ -345,18 +345,114 @@
         /* ───────── Results screen ───────── */
 
         showResults: function (data) {
+            var self = this;
             this.$loadingScreen.hide();
 
             // If CrocoBlock listing HTML was returned and has real content, use it
             var listingHtml = (data.listing_html || '').trim();
             if (listingHtml.length > 0) {
+                // 1. Load any CSS enqueued during server-side rendering
+                this.loadStyles(data.styles || []);
+
+                // 2. Inject the listing HTML so DOM elements exist
                 this.$resultsScreen.find('.pf-results-container').html(listingHtml);
+
+                // 3. Load any JS enqueued during rendering, then re-init widgets
+                this.loadScripts(data.scripts || [], function () {
+                    self.initDynamicContent();
+                });
             } else {
                 // Fallback: render product cards
                 this.renderFallbackResults(data);
             }
 
             this.$resultsScreen.fadeIn(300);
+        },
+
+        /**
+         * Dynamically load CSS files that were enqueued server-side
+         * during CrocoBlock listing rendering (e.g. swatch plugin CSS).
+         */
+        loadStyles: function (urls) {
+            for (var i = 0; i < urls.length; i++) {
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = urls[i];
+                document.head.appendChild(link);
+            }
+        },
+
+        /**
+         * Dynamically load JS files that were enqueued server-side,
+         * then invoke the callback once all scripts have loaded.
+         */
+        loadScripts: function (urls, callback) {
+            // Filter out scripts already present on the page.
+            var toLoad = [];
+            var existingSrcs = [];
+            var scripts = document.getElementsByTagName('script');
+            for (var k = 0; k < scripts.length; k++) {
+                if (scripts[k].src) {
+                    existingSrcs.push(scripts[k].src.split('?')[0]);
+                }
+            }
+            for (var i = 0; i < urls.length; i++) {
+                var base = urls[i].split('?')[0];
+                if (existingSrcs.indexOf(base) === -1) {
+                    toLoad.push(urls[i]);
+                }
+            }
+
+            if (!toLoad.length) {
+                callback();
+                return;
+            }
+
+            var loaded = 0;
+            for (var j = 0; j < toLoad.length; j++) {
+                var s = document.createElement('script');
+                s.src = toLoad[j];
+                s.onload = s.onerror = function () {
+                    if (++loaded >= toLoad.length) {
+                        callback();
+                    }
+                };
+                document.body.appendChild(s);
+            }
+        },
+
+        /**
+         * Re-initialize third-party widget JS on dynamically loaded content.
+         *
+         * After AJAX-injected listing HTML is in the DOM and any missing
+         * scripts have been loaded, trigger Elementor, WooCommerce and
+         * JetEngine initialization so swatch plugins, add-to-cart buttons
+         * and other interactive widgets work correctly.
+         */
+        initDynamicContent: function () {
+            var $container = this.$resultsScreen.find('.pf-results-container');
+
+            // Initialize WooCommerce variation forms
+            if ($.fn.wc_variation_form) {
+                $container.find('.variations_form').each(function () {
+                    $(this).wc_variation_form().trigger('check_variations');
+                });
+            }
+
+            // Re-initialize Elementor widgets (swatch widgets, etc.)
+            if (window.elementorFrontend && elementorFrontend.elementsHandler) {
+                if (typeof elementorFrontend.elementsHandler.runReadyTrigger === 'function') {
+                    $container.find('.elementor-widget').each(function () {
+                        elementorFrontend.elementsHandler.runReadyTrigger($(this));
+                    });
+                }
+            }
+
+            // Trigger generic post-load event (many WP plugins listen for this)
+            $(document.body).trigger('post-load');
+
+            // WooCommerce cart fragments refresh
+            $(document.body).trigger('wc_fragment_refresh');
         },
 
         renderFallbackResults: function (data) {

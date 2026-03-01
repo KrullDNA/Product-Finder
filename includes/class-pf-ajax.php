@@ -185,6 +185,8 @@ class PF_Ajax {
 
         // Debug log
         $this->_debug = array();
+        $this->_new_styles  = array();
+        $this->_new_scripts = array();
 
         // If CrocoBlock listing template is set, render via JetEngine
         $html = '';
@@ -236,6 +238,8 @@ class PF_Ajax {
             'product_ids' => $top_ids,
             'listing_html'=> $html,
             'options'     => $options,
+            'styles'      => $this->_new_styles,
+            'scripts'     => $this->_new_scripts,
             'debug'       => $this->_debug,
         ) );
     }
@@ -260,6 +264,12 @@ class PF_Ajax {
         $this->_debug[] = 'WC ready: cart=' . ( is_null( WC()->cart ) ? 'NULL' : 'OK' )
             . ', session=' . ( is_null( WC()->session ) ? 'NULL' : 'OK' );
 
+        // Snapshot currently queued assets before rendering so we can
+        // detect CSS/JS enqueued by widgets (e.g. swatch plugins) that
+        // the browser hasn't loaded yet.
+        $styles_before  = wp_styles()->queue;
+        $scripts_before = wp_scripts()->queue;
+
         // Hook into WordPress's the_post action so that every time
         // JetEngine (or our manual loop) sets up a post, we also
         // initialise the WooCommerce global $product.  Without this
@@ -275,6 +285,16 @@ class PF_Ajax {
         $html = $this->_render_listing_methods( $product_ids, $listing_id, $cols_desktop, $cols_tablet, $cols_mobile );
 
         remove_action( 'the_post', $product_setup );
+
+        // Capture CSS/JS enqueued during rendering and collect their
+        // URLs so the frontend can load them dynamically.
+        $this->_new_styles  = $this->collect_asset_urls( wp_styles(),  array_diff( wp_styles()->queue,  $styles_before ) );
+        $this->_new_scripts = $this->collect_asset_urls( wp_scripts(), array_diff( wp_scripts()->queue, $scripts_before ) );
+
+        if ( ! empty( $this->_new_styles ) || ! empty( $this->_new_scripts ) ) {
+            $this->_debug[] = 'Dynamic assets: ' . count( $this->_new_styles ) . ' style(s), '
+                . count( $this->_new_scripts ) . ' script(s)';
+        }
 
         return $html;
     }
@@ -426,6 +446,36 @@ class PF_Ajax {
         }
         $this->_debug[] = 'Method 3 FAILED – ALL METHODS EXHAUSTED';
         return '';
+    }
+
+    /**
+     * Collect absolute URLs for newly enqueued style/script handles.
+     *
+     * @param WP_Styles|WP_Scripts $registry   The WordPress dependency registry.
+     * @param string[]             $handles    Handles that were newly queued.
+     * @return string[]  Absolute URLs (with ?ver= appended).
+     */
+    private function collect_asset_urls( $registry, $handles ) {
+        $urls = array();
+        foreach ( $handles as $handle ) {
+            if ( ! isset( $registry->registered[ $handle ] ) ) {
+                continue;
+            }
+            $dep = $registry->registered[ $handle ];
+            if ( empty( $dep->src ) ) {
+                continue;
+            }
+            $src = $dep->src;
+            // Make relative URLs absolute.
+            if ( 0 !== strpos( $src, 'http' ) && 0 !== strpos( $src, '//' ) ) {
+                $src = site_url( $src );
+            }
+            if ( $dep->ver ) {
+                $src = add_query_arg( 'ver', $dep->ver, $src );
+            }
+            $urls[] = $src;
+        }
+        return $urls;
     }
 
     /**
