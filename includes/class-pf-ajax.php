@@ -260,6 +260,30 @@ class PF_Ajax {
         $this->_debug[] = 'WC ready: cart=' . ( is_null( WC()->cart ) ? 'NULL' : 'OK' )
             . ', session=' . ( is_null( WC()->session ) ? 'NULL' : 'OK' );
 
+        // Hook into WordPress's the_post action so that every time
+        // JetEngine (or our manual loop) sets up a post, we also
+        // initialise the WooCommerce global $product.  Without this
+        // the Add to Cart widget triggers a PHP fatal because it
+        // calls methods on a null $product.
+        $product_setup = function ( $post ) {
+            if ( 'product' === $post->post_type && function_exists( 'wc_setup_product_data' ) ) {
+                wc_setup_product_data( $post );
+            }
+        };
+        add_action( 'the_post', $product_setup );
+
+        $html = $this->_render_listing_methods( $product_ids, $listing_id, $cols_desktop, $cols_tablet, $cols_mobile );
+
+        remove_action( 'the_post', $product_setup );
+
+        return $html;
+    }
+
+    /**
+     * Try each rendering method in order and return the first success.
+     */
+    private function _render_listing_methods( $product_ids, $listing_id, $cols_desktop, $cols_tablet, $cols_mobile ) {
+
         // Method 1: JetEngine shortcode with query filter hook.
         // We inject product IDs via the jet-engine query filter rather than
         // encoding JSON inside a shortcode attribute (WordPress's shortcode
@@ -372,11 +396,7 @@ class PF_Ajax {
 
                 while ( $query->have_posts() ) {
                     $query->the_post();
-
-                    if ( function_exists( 'wc_setup_product_data' ) ) {
-                        wc_setup_product_data( get_the_ID() );
-                    }
-
+                    // wc_setup_product_data is called via our the_post hook.
                     echo '<div class="pf-result-item">';
 
                     if ( $listing_post ) {
@@ -423,21 +443,33 @@ class PF_Ajax {
         // wc_load_cart() (WC 3.6+) initialises session, customer & cart.
         if ( function_exists( 'wc_load_cart' ) ) {
             wc_load_cart();
-            return;
+        } else {
+            // Fallback for older WooCommerce versions.
+            if ( is_null( WC()->session ) && class_exists( 'WC_Session_Handler' ) ) {
+                WC()->session = new \WC_Session_Handler();
+                WC()->session->init();
+            }
+            if ( is_null( WC()->customer ) && class_exists( 'WC_Customer' ) ) {
+                WC()->customer = new \WC_Customer( get_current_user_id(), true );
+            }
+            if ( is_null( WC()->cart ) && class_exists( 'WC_Cart' ) ) {
+                WC()->cart = new \WC_Cart();
+            }
         }
 
-        // Fallback for older WooCommerce versions.
-        if ( is_null( WC()->session ) && class_exists( 'WC_Session_Handler' ) ) {
-            WC()->session = new \WC_Session_Handler();
-            WC()->session->init();
-        }
+        // Load WC frontend includes – needed for Add to Cart templates,
+        // product form rendering, etc.
+        if ( defined( 'WC_ABSPATH' ) ) {
+            $frontend = WC_ABSPATH . 'includes/wc-template-functions.php';
+            if ( ! function_exists( 'woocommerce_template_single_add_to_cart' ) && file_exists( $frontend ) ) {
+                include_once $frontend;
+            }
 
-        if ( is_null( WC()->customer ) && class_exists( 'WC_Customer' ) ) {
-            WC()->customer = new \WC_Customer( get_current_user_id(), true );
-        }
-
-        if ( is_null( WC()->cart ) && class_exists( 'WC_Cart' ) ) {
-            WC()->cart = new \WC_Cart();
+            // Template hooks (add-to-cart button, quantity selector, etc.)
+            $hooks_file = WC_ABSPATH . 'includes/wc-template-hooks.php';
+            if ( file_exists( $hooks_file ) ) {
+                include_once $hooks_file;
+            }
         }
     }
 
