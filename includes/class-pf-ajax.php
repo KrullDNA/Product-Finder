@@ -243,7 +243,7 @@ class PF_Ajax {
     /* ────────── CrocoBlock listing render ─────────────────── */
 
     private function render_crocoblock_listing( $product_ids, $options ) {
-        $listing_id  = absint( $options['listing_template'] );
+        $listing_id   = absint( $options['listing_template'] );
         $cols_desktop = absint( $options['cols_desktop'] ?? 3 );
         $cols_tablet  = absint( $options['cols_tablet'] ?? 2 );
         $cols_mobile  = absint( $options['cols_mobile'] ?? 1 );
@@ -260,26 +260,36 @@ class PF_Ajax {
         $this->_debug[] = 'WC ready: cart=' . ( is_null( WC()->cart ) ? 'NULL' : 'OK' )
             . ', session=' . ( is_null( WC()->session ) ? 'NULL' : 'OK' );
 
-        // Method 1: Use the jet-engine shortcode (most reliable)
+        // Method 1: JetEngine shortcode with query filter hook.
+        // We inject product IDs via the jet-engine query filter rather than
+        // encoding JSON inside a shortcode attribute (WordPress's shortcode
+        // parser cannot handle escaped double quotes inside attribute values).
         if ( shortcode_exists( 'jet_engine_listing_grid' ) ) {
-            $ids_string = implode( ',', $product_ids );
-            $shortcode  = '[jet_engine_listing_grid'
-                . ' listing_id="' . $listing_id . '"'
-                . ' post_status="publish"'
-                . ' posts_query="[{\"type\":\"posts_params\",\"posts_in\":\"' . $ids_string . '\"},{\"type\":\"order_offset\",\"order_by\":\"post__in\",\"order\":\"ASC\"}]"'
-                . ' posts_num="' . count( $product_ids ) . '"'
-                . ' columns="' . $cols_desktop . '"'
-                . ' columns_tablet="' . $cols_tablet . '"'
-                . ' columns_mobile="' . $cols_mobile . '"'
-                . ' post_type="product"'
-                . ' is_archive_template="no"'
-                . ']';
+            $this->_debug[] = 'Method 1: shortcode + query filter hook';
 
-            $this->_debug[] = 'Method 1: jet_engine_listing_grid shortcode exists';
+            $pids = $product_ids;
+            $query_filter = function ( $args ) use ( $pids ) {
+                $args['post__in'] = $pids;
+                $args['orderby']  = 'post__in';
+                $args['order']    = 'ASC';
+                return $args;
+            };
+            add_filter( 'jet-engine/listing/grid/posts-query-args', $query_filter, 9999 );
 
-            $output = $this->safe_render( function () use ( $shortcode ) {
+            $shortcode = sprintf(
+                '[jet_engine_listing_grid listing_id="%d" posts_num="%d" columns="%d" columns_tablet="%d" columns_mobile="%d" post_type="product" is_archive_template="no"]',
+                $listing_id,
+                count( $product_ids ),
+                $cols_desktop,
+                $cols_tablet,
+                $cols_mobile
+            );
+
+            $output = $this->capture_render( function () use ( $shortcode ) {
                 return do_shortcode( $shortcode );
             } );
+
+            remove_filter( 'jet-engine/listing/grid/posts-query-args', $query_filter, 9999 );
 
             $stripped = trim( strip_tags( $output ) );
             $this->_debug[] = 'Method 1 output: raw_len=' . strlen( $output )
@@ -287,7 +297,7 @@ class PF_Ajax {
                 . ', first_500=' . substr( $output, 0, 500 );
 
             if ( ! empty( $stripped ) ) {
-                $this->_debug[] = 'Method 1 SUCCESS – returning output';
+                $this->_debug[] = 'Method 1 SUCCESS';
                 return $output;
             }
             $this->_debug[] = 'Method 1 FAILED – stripped output is empty';
@@ -295,12 +305,12 @@ class PF_Ajax {
             $this->_debug[] = 'Method 1: jet_engine_listing_grid shortcode NOT found';
         }
 
-        // Method 2: Use JetEngine PHP API if available
+        // Method 2: JetEngine PHP API
         if ( function_exists( 'jet_engine' ) && class_exists( 'Jet_Engine' ) ) {
             if ( isset( jet_engine()->listings ) && method_exists( jet_engine()->listings, 'get_render_instance' ) ) {
-                $this->_debug[] = 'Method 2: JetEngine PHP API available';
+                $this->_debug[] = 'Method 2: JetEngine PHP API';
 
-                $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
+                $output = $this->capture_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
                     $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
                         'listing_id'     => $listing_id,
                         'lisitng_id'     => $listing_id,
@@ -330,11 +340,10 @@ class PF_Ajax {
 
                 $stripped = trim( strip_tags( $output ) );
                 $this->_debug[] = 'Method 2 output: raw_len=' . strlen( $output )
-                    . ', stripped_len=' . strlen( $stripped )
-                    . ', first_500=' . substr( $output, 0, 500 );
+                    . ', stripped_len=' . strlen( $stripped );
 
                 if ( ! empty( $stripped ) ) {
-                    $this->_debug[] = 'Method 2 SUCCESS – returning output';
+                    $this->_debug[] = 'Method 2 SUCCESS';
                     return $output;
                 }
                 $this->_debug[] = 'Method 2 FAILED – stripped output is empty';
@@ -346,9 +355,9 @@ class PF_Ajax {
         }
 
         // Method 3: Manual loop with Elementor content rendering
-        $this->_debug[] = 'Method 3: Manual loop with Elementor';
+        $this->_debug[] = 'Method 3: Manual Elementor loop';
 
-        $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
+        $output = $this->capture_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
             $query = new WP_Query( array(
                 'post_type'      => 'product',
                 'post__in'       => $product_ids,
@@ -364,7 +373,6 @@ class PF_Ajax {
                 while ( $query->have_posts() ) {
                     $query->the_post();
 
-                    // Ensure the WooCommerce global $product is set for this post
                     if ( function_exists( 'wc_setup_product_data' ) ) {
                         wc_setup_product_data( get_the_ID() );
                     }
@@ -390,17 +398,13 @@ class PF_Ajax {
 
         $stripped = trim( strip_tags( $output ) );
         $this->_debug[] = 'Method 3 output: raw_len=' . strlen( $output )
-            . ', stripped_len=' . strlen( $stripped )
-            . ', first_500=' . substr( $output, 0, 500 );
+            . ', stripped_len=' . strlen( $stripped );
 
         if ( ! empty( $stripped ) ) {
-            $this->_debug[] = 'Method 3 SUCCESS – returning output';
+            $this->_debug[] = 'Method 3 SUCCESS';
             return $output;
         }
-        $this->_debug[] = 'Method 3 FAILED – stripped output is empty';
-
-        // If all methods failed, return empty so frontend uses fallback cards
-        $this->_debug[] = 'ALL METHODS FAILED – returning empty string';
+        $this->_debug[] = 'Method 3 FAILED – ALL METHODS EXHAUSTED';
         return '';
     }
 
@@ -438,59 +442,48 @@ class PF_Ajax {
     }
 
     /**
-     * Run a render callback inside an output buffer with error handling.
+     * Execute a rendering callback with robust output capture.
      *
-     * Captures any stray PHP output (warnings, notices) that would
-     * otherwise corrupt the JSON response.  Also catches Throwable
-     * errors so a single broken widget does not kill the whole request.
+     * Uses two nested output buffers (outer safety net + inner capture)
+     * so that content is still recovered when a third-party widget
+     * (e.g. WooCommerce Add to Cart) flushes or destroys the inner
+     * buffer.  In that scenario the rendered HTML leaks into the outer
+     * buffer, which we collect here.
      *
-     * @param callable $callback  Must either echo or return content.
+     * @param callable $callback  Must either return or echo content.
      * @return string  Rendered HTML.
      */
-    private function safe_render( callable $callback ) {
-        $level_before = ob_get_level();
-        ob_start();
+    private function capture_render( callable $callback ) {
+        $baseline = ob_get_level();
+
+        ob_start(); // outer – safety net
+        ob_start(); // inner – primary capture
+
+        $returned = '';
         try {
             $returned = $callback();
         } catch ( \Throwable $e ) {
-            // Clean up any buffers added during the callback.
-            while ( ob_get_level() > $level_before ) {
-                ob_end_clean();
-            }
-            $this->_debug[] = 'safe_render CAUGHT ERROR: ' . $e->getMessage()
+            $this->_debug[] = 'capture_render ERROR: ' . $e->getMessage()
                 . ' in ' . $e->getFile() . ':' . $e->getLine();
-            return '';
         }
 
-        // If the rendering destroyed or flushed our buffer (common with
-        // WooCommerce widgets), the output went to the parent buffer.
-        // Clean up any extra levels that were added.
-        if ( ob_get_level() > $level_before + 1 ) {
-            while ( ob_get_level() > $level_before + 1 ) {
-                ob_end_clean();
-            }
+        // Collect everything from all buffers above the baseline.
+        // If the inner buffer was destroyed / flushed, its content now
+        // sits in the outer buffer and we still capture it.
+        $buffered = '';
+        while ( ob_get_level() > $baseline ) {
+            $buffered = ob_get_clean() . $buffered;
         }
 
-        // Grab our buffer if it still exists.
-        $echoed = '';
-        if ( ob_get_level() > $level_before ) {
-            $echoed = ob_get_clean();
-        } else {
-            // Our buffer was destroyed – nothing to capture.
-            $this->_debug[] = 'safe_render: output buffer was destroyed by rendering';
-        }
+        $this->_debug[] = 'capture_render: returned_len=' . strlen( $returned )
+            . ', buffered_len=' . strlen( $buffered )
+            . ', ob_delta=' . ( ob_get_level() - $baseline );
 
-        if ( ! empty( $echoed ) ) {
-            $this->_debug[] = 'safe_render: echoed_len=' . strlen( $echoed );
-        }
-
-        // If the callback returned content, prefer that; otherwise use
-        // whatever was echoed into the output buffer.
+        // Prefer returned content; fall back to buffered output.
         if ( ! empty( $returned ) ) {
             return $returned;
         }
-
-        return $echoed;
+        return $buffered;
     }
 
     /**
