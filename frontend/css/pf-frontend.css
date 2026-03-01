@@ -634,7 +634,25 @@ i.pf-loading-icon {
 .pf-atc-btn--disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    pointer-events: none;
+}
+
+/* Icon inside button */
+.pf-atc-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.pf-atc-btn-icon i {
+    font-size: inherit;
+}
+
+.pf-atc-btn-icon svg {
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
 }
 
 .pf-atc-btn.loading::after {

@@ -8,6 +8,7 @@ use Elementor\Controls_Manager;
 use Elementor\Group_Control_Typography;
 use Elementor\Group_Control_Border;
 use Elementor\Group_Control_Box_Shadow;
+use Elementor\Icons_Manager;
 
 /**
  * Lightweight Add-to-Cart widget for Elementor.
@@ -15,8 +16,9 @@ use Elementor\Group_Control_Box_Shadow;
  * Designed to work inside CrocoBlock / JetEngine listing grids without
  * the output-buffer issues caused by WooCommerce's native Add to Cart
  * widget.  Renders a simple button that uses WC's built-in AJAX
- * add-to-cart for simple products, or links to the product page for
- * variable / grouped / external products.
+ * add-to-cart for simple products.  For variable products, the button
+ * starts disabled and activates once a variation is selected via a
+ * companion swatch widget.
  */
 class PF_Add_To_Cart_Widget extends Widget_Base {
 
@@ -40,6 +42,14 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
         return array( 'add to cart', 'cart', 'buy', 'woocommerce', 'product', 'listing' );
     }
 
+    public function get_script_depends() {
+        return array( 'pf-add-to-cart' );
+    }
+
+    public function get_style_depends() {
+        return array( 'pf-frontend' );
+    }
+
     /* ─────────── Controls ─────────── */
 
     protected function register_controls() {
@@ -56,11 +66,14 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'default' => __( 'Add to Cart', 'product-finder' ),
         ) );
 
-        $this->add_control( 'variable_text', array(
-            'label'       => __( 'Variable Product Text', 'product-finder' ),
-            'type'        => Controls_Manager::TEXT,
-            'default'     => __( 'Select Options', 'product-finder' ),
-            'description' => __( 'Text shown for variable / grouped products (links to product page).', 'product-finder' ),
+        $this->add_control( 'button_icon', array(
+            'label'       => __( 'Icon', 'product-finder' ),
+            'type'        => Controls_Manager::ICONS,
+            'default'     => array(
+                'value'   => 'fas fa-plus',
+                'library' => 'fa-solid',
+            ),
+            'description' => __( 'Icon displayed after the button label.', 'product-finder' ),
         ) );
 
         $this->add_control( 'show_price', array(
@@ -69,7 +82,7 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'default'      => '',
             'label_on'     => __( 'Yes', 'product-finder' ),
             'label_off'    => __( 'No', 'product-finder' ),
-            'description'  => __( 'Display the product price next to the button.', 'product-finder' ),
+            'description'  => __( 'Display the product price above the button.', 'product-finder' ),
         ) );
 
         $this->add_control( 'show_quantity', array(
@@ -78,7 +91,7 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'default'      => '',
             'label_on'     => __( 'Yes', 'product-finder' ),
             'label_off'    => __( 'No', 'product-finder' ),
-            'description'  => __( 'Show a quantity input next to the button (simple products only).', 'product-finder' ),
+            'description'  => __( 'Show a quantity input next to the button.', 'product-finder' ),
         ) );
 
         $this->add_responsive_control( 'align', array(
@@ -146,6 +159,33 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'label'     => __( 'Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array( '{{WRAPPER}} .pf-atc-btn:hover' => 'background-color: {{VALUE}};' ),
+        ) );
+
+        $this->end_controls_tab();
+
+        // Disabled state
+        $this->start_controls_tab( 'button_disabled', array(
+            'label' => __( 'Disabled', 'product-finder' ),
+        ) );
+
+        $this->add_control( 'btn_color_disabled', array(
+            'label'     => __( 'Text Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-atc-btn.pf-atc-btn--disabled' => 'color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'btn_bg_disabled', array(
+            'label'     => __( 'Background', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-atc-btn.pf-atc-btn--disabled' => 'background-color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'btn_opacity_disabled', array(
+            'label'   => __( 'Opacity', 'product-finder' ),
+            'type'    => Controls_Manager::SLIDER,
+            'range'   => array( 'px' => array( 'min' => 0, 'max' => 1, 'step' => 0.05 ) ),
+            'default' => array( 'size' => 0.5 ),
+            'selectors' => array( '{{WRAPPER}} .pf-atc-btn.pf-atc-btn--disabled' => 'opacity: {{SIZE}};' ),
         ) );
 
         $this->end_controls_tab();
@@ -230,6 +270,23 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             ),
         ) );
 
+        $this->add_control( 'qty_border_color', array(
+            'label'     => __( 'Border Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-atc-qty' => 'border-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_control( 'qty_border_radius', array(
+            'label'      => __( 'Border Radius', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-atc-qty' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
         $this->end_controls_section();
 
         /* ── Style: Price ── */
@@ -278,6 +335,9 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             return;
         }
 
+        // Ensure WooCommerce's AJAX add-to-cart handler is loaded.
+        wp_enqueue_script( 'wc-add-to-cart' );
+
         // Resolve the product object.
         $the_product = $product;
         if ( ! $the_product instanceof \WC_Product && $post ) {
@@ -295,23 +355,29 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
         $product_type  = $the_product->get_type();
         $is_purchasable = $the_product->is_purchasable() && $the_product->is_in_stock();
 
-        // Choose label and behaviour based on product type.
         $is_simple     = ( 'simple' === $product_type );
-        $button_text   = $is_simple
-            ? ( $settings['button_text'] ?: __( 'Add to Cart', 'product-finder' ) )
-            : ( $settings['variable_text'] ?: __( 'Select Options', 'product-finder' ) );
-        $button_url    = $is_simple ? '' : get_permalink( $product_id );
+        $is_variable   = ( 'variable' === $product_type );
+        $button_text   = $settings['button_text'] ?: __( 'Add to Cart', 'product-finder' );
+
+        // Build the icon HTML.
+        $icon_html = '';
+        if ( ! empty( $settings['button_icon']['value'] ) ) {
+            ob_start();
+            echo '<span class="pf-atc-btn-icon">';
+            Icons_Manager::render_icon( $settings['button_icon'], array( 'aria-hidden' => 'true' ) );
+            echo '</span>';
+            $icon_html = ob_get_clean();
+        }
 
         // Build CSS classes for the button.
-        // WooCommerce's add-to-cart.min.js hooks onto these classes
-        // to perform AJAX add-to-cart for simple products.
-        $btn_classes = array( 'pf-atc-btn', 'button' );
+        $btn_classes = array( 'pf-atc-btn' );
         if ( $is_simple && $is_purchasable ) {
             $btn_classes[] = 'add_to_cart_button';
             $btn_classes[] = 'ajax_add_to_cart';
-        }
-        if ( ! $is_simple ) {
-            $btn_classes[] = 'product_type_' . esc_attr( $product_type );
+        } elseif ( $is_variable && $is_purchasable ) {
+            // Variable product: starts disabled until swatch selection.
+            $btn_classes[] = 'pf-atc-btn--disabled';
+            $btn_classes[] = 'product_type_variable';
         }
 
         echo '<div class="pf-atc-wrap">';
@@ -323,36 +389,50 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
 
         echo '<div class="pf-atc-inner">';
 
-        // Optional quantity input (simple products only).
-        if ( $is_simple && $is_purchasable && 'yes' === ( $settings['show_quantity'] ?? '' ) ) {
+        // Optional quantity input (simple and variable products).
+        if ( $is_purchasable && 'yes' === ( $settings['show_quantity'] ?? '' ) && ( $is_simple || $is_variable ) ) {
+            $max_qty = $the_product->get_max_purchase_quantity();
             echo '<input type="number" class="pf-atc-qty" value="1" min="1" max="'
-                . esc_attr( $the_product->get_max_purchase_quantity() > 0 ? $the_product->get_max_purchase_quantity() : '' )
+                . esc_attr( $max_qty > 0 ? $max_qty : '' )
                 . '" step="1" inputmode="numeric">';
         }
 
         if ( $is_simple && $is_purchasable ) {
             // Simple product: AJAX add-to-cart button.
             printf(
-                '<a href="%s" data-product_id="%d" data-product_sku="%s" data-quantity="1" class="%s" rel="nofollow">%s</a>',
+                '<a href="%s" data-product_id="%d" data-product_sku="%s" data-quantity="1" class="%s" rel="nofollow">%s%s</a>',
                 esc_url( $the_product->add_to_cart_url() ),
                 $product_id,
                 esc_attr( $the_product->get_sku() ),
                 esc_attr( implode( ' ', $btn_classes ) ),
-                esc_html( $button_text )
+                esc_html( $button_text ),
+                $icon_html
+            );
+        } elseif ( $is_variable && $is_purchasable ) {
+            // Variable product: disabled until variation is selected via swatches.
+            printf(
+                '<a href="#" data-product_id="%d" data-product_sku="%s" data-quantity="1" data-pf-variable="1" class="%s" rel="nofollow">%s%s</a>',
+                $product_id,
+                esc_attr( $the_product->get_sku() ),
+                esc_attr( implode( ' ', $btn_classes ) ),
+                esc_html( $button_text ),
+                $icon_html
             );
         } elseif ( $is_purchasable || 'external' === $product_type ) {
-            // Variable / grouped / external: link to product page.
+            // Grouped / external: link to product page.
             printf(
-                '<a href="%s" class="%s" rel="nofollow">%s</a>',
-                esc_url( $button_url ?: $the_product->add_to_cart_url() ),
+                '<a href="%s" class="%s" rel="nofollow">%s%s</a>',
+                esc_url( get_permalink( $product_id ) ?: $the_product->add_to_cart_url() ),
                 esc_attr( implode( ' ', $btn_classes ) ),
-                esc_html( $button_text )
+                esc_html( $button_text ),
+                $icon_html
             );
         } else {
             // Out of stock / not purchasable.
             printf(
-                '<span class="pf-atc-btn pf-atc-btn--disabled">%s</span>',
-                esc_html__( 'Out of Stock', 'product-finder' )
+                '<span class="pf-atc-btn pf-atc-btn--disabled">%s%s</span>',
+                esc_html__( 'Out of Stock', 'product-finder' ),
+                $icon_html
             );
         }
 
@@ -364,13 +444,30 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
      * Show a placeholder button in the Elementor editor.
      */
     private function render_editor_placeholder() {
-        echo '<div class="pf-atc-wrap">'
-            . '<div class="pf-atc-inner">'
-            . '<a href="#" class="pf-atc-btn button" onclick="return false;">'
-            . esc_html__( 'Add to Cart', 'product-finder' )
-            . '</a>'
-            . '</div>'
-            . '</div>';
+        $settings  = $this->get_settings_for_display();
+        $icon_html = '';
+        if ( ! empty( $settings['button_icon']['value'] ) ) {
+            ob_start();
+            echo '<span class="pf-atc-btn-icon">';
+            Icons_Manager::render_icon( $settings['button_icon'], array( 'aria-hidden' => 'true' ) );
+            echo '</span>';
+            $icon_html = ob_get_clean();
+        }
+
+        echo '<div class="pf-atc-wrap">';
+        if ( 'yes' === ( $settings['show_price'] ?? '' ) ) {
+            echo '<div class="pf-atc-price">&pound;19.99</div>';
+        }
+        echo '<div class="pf-atc-inner">';
+        if ( 'yes' === ( $settings['show_quantity'] ?? '' ) ) {
+            echo '<input type="number" class="pf-atc-qty" value="1" min="1" step="1">';
+        }
+        printf(
+            '<a href="#" class="pf-atc-btn" onclick="return false;">%s%s</a>',
+            esc_html( $settings['button_text'] ?: __( 'Add to Cart', 'product-finder' ) ),
+            $icon_html
+        );
+        echo '</div></div>';
     }
 
     /**
@@ -386,7 +483,15 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
                 <# if ( settings.show_quantity === 'yes' ) { #>
                 <input type="number" class="pf-atc-qty" value="1" min="1" step="1">
                 <# } #>
-                <a href="#" class="pf-atc-btn button" onclick="return false;">{{{ settings.button_text || 'Add to Cart' }}}</a>
+                <a href="#" class="pf-atc-btn" onclick="return false;">
+                    {{{ settings.button_text || 'Add to Cart' }}}
+                    <#
+                    var iconHTML = elementor.helpers.renderIcon( view, settings.button_icon, { 'aria-hidden': true }, 'i', 'object' );
+                    if ( iconHTML && iconHTML.value ) {
+                    #>
+                    <span class="pf-atc-btn-icon">{{{ iconHTML.value }}}</span>
+                    <# } #>
+                </a>
             </div>
         </div>
         <?php
