@@ -104,15 +104,11 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'tab'   => Controls_Manager::TAB_STYLE,
         ) );
 
-        Group_Control_Typography::add_control_to_stack(
-            $this,
-            'button_typography',
-            array(
-                'name'     => 'button_typography',
-                'label'    => __( 'Typography', 'product-finder' ),
-                'selector' => '{{WRAPPER}} .pf-atc-btn',
-            )
-        );
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'button_typography',
+            'label'    => __( 'Typography', 'product-finder' ),
+            'selector' => '{{WRAPPER}} .pf-atc-btn',
+        ) );
 
         $this->start_controls_tabs( 'button_colors' );
 
@@ -175,23 +171,15 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             ),
         ) );
 
-        Group_Control_Border::add_control_to_stack(
-            $this,
-            'btn_border',
-            array(
-                'name'     => 'btn_border',
-                'selector' => '{{WRAPPER}} .pf-atc-btn',
-            )
-        );
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'btn_border',
+            'selector' => '{{WRAPPER}} .pf-atc-btn',
+        ) );
 
-        Group_Control_Box_Shadow::add_control_to_stack(
-            $this,
-            'btn_shadow',
-            array(
-                'name'     => 'btn_shadow',
-                'selector' => '{{WRAPPER}} .pf-atc-btn',
-            )
-        );
+        $this->add_group_control( Group_Control_Box_Shadow::get_type(), array(
+            'name'     => 'btn_shadow',
+            'selector' => '{{WRAPPER}} .pf-atc-btn',
+        ) );
 
         $this->add_control( 'btn_full_width', array(
             'label'        => __( 'Full Width', 'product-finder' ),
@@ -258,15 +246,11 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             'selectors' => array( '{{WRAPPER}} .pf-atc-price' => 'color: {{VALUE}};' ),
         ) );
 
-        Group_Control_Typography::add_control_to_stack(
-            $this,
-            'price_typography',
-            array(
-                'name'     => 'price_typography',
-                'label'    => __( 'Typography', 'product-finder' ),
-                'selector' => '{{WRAPPER}} .pf-atc-price',
-            )
-        );
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'price_typography',
+            'label'    => __( 'Typography', 'product-finder' ),
+            'selector' => '{{WRAPPER}} .pf-atc-price',
+        ) );
 
         $this->add_responsive_control( 'price_spacing', array(
             'label'      => __( 'Spacing', 'product-finder' ),
