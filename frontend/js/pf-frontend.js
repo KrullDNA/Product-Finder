@@ -60,14 +60,22 @@
 
             // Text answer hover-out animation: slide out to the right
             this.$el.on('mouseenter', '.pf-answer-option--text', function () {
-                $(this).removeClass('pf-hover-out');
+                $(this).removeClass('pf-hover-out pf-no-transition');
             });
             this.$el.on('mouseleave', '.pf-answer-option--text', function () {
                 if (!$(this).hasClass('pf-selected')) {
                     $(this).addClass('pf-hover-out');
-                    // Remove the class after the animation so it's ready for next hover
+                    // After slide-out animation, snap ::before back to start without transition
+                    // (prevents flash through translateX(0) on the way from 100% to -100%)
                     var $opt = $(this);
-                    setTimeout(function () { $opt.removeClass('pf-hover-out'); }, 350);
+                    setTimeout(function () {
+                        $opt.addClass('pf-no-transition').removeClass('pf-hover-out');
+                        // Force reflow so the snap happens before re-enabling transitions
+                        void $opt[0].offsetHeight;
+                        requestAnimationFrame(function () {
+                            $opt.removeClass('pf-no-transition');
+                        });
+                    }, 350);
                 }
             });
 

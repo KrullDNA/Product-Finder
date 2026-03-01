@@ -209,6 +209,12 @@
     z-index: 0;
 }
 
+/* Force element background to stay constant – prevents stale Elementor :hover CSS */
+.pf-answer-option--text,
+.pf-answer-option--text:hover {
+    background-color: var(--pf-card-bg, #ffffff) !important;
+}
+
 /* Animated hover fill: slides in from left, slides out to right */
 .pf-answer-option--text::before {
     content: '';
@@ -230,6 +236,11 @@
 /* When mouse leaves, animate out to the right */
 .pf-answer-option--text.pf-hover-out::before {
     transform: translateX(100%);
+}
+
+/* Disable transition when resetting ::before position (prevents flash through translateX(0)) */
+.pf-answer-option--text.pf-no-transition::before {
+    transition: none !important;
 }
 
 .pf-answer-option--text:hover {

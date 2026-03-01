@@ -478,7 +478,7 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'     => __( 'Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-answer-option--text' => 'background-color: {{VALUE}};',
+                '{{WRAPPER}} .pf-answer-option--text' => 'background-color: {{VALUE}} !important;',
             ),
         ) );
 
