@@ -424,4 +424,14 @@
         });
     });
 
+    /* ───────── PF Add to Cart: quantity sync ───────── */
+
+    // When the user changes the quantity input, update the sibling
+    // button's data-quantity so WooCommerce's AJAX add-to-cart
+    // picks up the correct amount.
+    $(document).on('change input', '.pf-atc-qty', function () {
+        var qty = parseInt($(this).val(), 10) || 1;
+        $(this).siblings('.pf-atc-btn').attr('data-quantity', qty);
+    });
+
 })(jQuery);

@@ -23,6 +23,9 @@ class PF_Elementor {
     public function register_widget( $widgets_manager ) {
         require_once PF_PLUGIN_DIR . 'elementor/class-pf-elementor-widget.php';
         $widgets_manager->register( new PF_Elementor_Widget() );
+
+        require_once PF_PLUGIN_DIR . 'elementor/class-pf-add-to-cart-widget.php';
+        $widgets_manager->register( new PF_Add_To_Cart_Widget() );
     }
 }
 

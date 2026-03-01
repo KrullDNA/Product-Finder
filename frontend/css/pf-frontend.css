@@ -595,3 +595,92 @@ i.pf-loading-icon {
         width: 100%;
     }
 }
+
+/* === PF Add to Cart Widget === */
+
+.pf-atc-wrap {
+    line-height: 1.4;
+}
+
+.pf-atc-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pf-atc-btn {
+    display: inline-block;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+    transition: background-color 0.25s ease, color 0.25s ease;
+    box-sizing: border-box;
+}
+
+.pf-atc-btn:hover {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.pf-atc-btn--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pf-atc-btn.loading::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: middle;
+    animation: pf-atc-spin 0.6s linear infinite;
+}
+
+@keyframes pf-atc-spin {
+    to { transform: rotate(360deg); }
+}
+
+.pf-atc-btn.added::after {
+    content: '\2713';
+    margin-left: 8px;
+    animation: none;
+    border: none;
+    width: auto;
+    height: auto;
+}
+
+.pf-atc-qty {
+    width: 60px;
+    height: 40px;
+    padding: 4px 8px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.pf-atc-qty::-webkit-inner-spin-button,
+.pf-atc-qty::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.pf-atc-price {
+    margin-bottom: 6px;
+}
