@@ -75,9 +75,10 @@ class PF_Ajax {
         $data = array();
         foreach ( $questions as $q ) {
             $q_data = array(
-                'text'     => $q['text'],
-                'multiple' => (bool) $q['multiple'],
-                'answers'  => array(),
+                'text'        => $q['text'],
+                'instruction' => $q['instruction'] ?? '',
+                'multiple'    => (bool) $q['multiple'],
+                'answers'     => array(),
             );
             foreach ( $q['answers'] as $a ) {
                 $image_url = $a['image_id'] ? wp_get_attachment_image_url( $a['image_id'], 'medium' ) : '';
@@ -206,58 +207,96 @@ class PF_Ajax {
     /* ────────── CrocoBlock listing render ─────────────────── */
 
     private function render_crocoblock_listing( $product_ids, $options ) {
-        if ( ! function_exists( 'jet_engine' ) ) {
+        $listing_id  = absint( $options['listing_template'] );
+        $cols_desktop = absint( $options['cols_desktop'] ?? 3 );
+        $cols_tablet  = absint( $options['cols_tablet'] ?? 2 );
+        $cols_mobile  = absint( $options['cols_mobile'] ?? 1 );
+
+        if ( ! $listing_id || empty( $product_ids ) ) {
             return '';
         }
 
-        $listing_id = absint( $options['listing_template'] );
-        if ( ! $listing_id ) {
-            return '';
+        // Method 1: Use the jet-engine shortcode (most reliable)
+        if ( shortcode_exists( 'jet_engine_listing_grid' ) ) {
+            $ids_string = implode( ',', $product_ids );
+            $shortcode  = '[jet_engine_listing_grid'
+                . ' listing_id="' . $listing_id . '"'
+                . ' post_status="publish"'
+                . ' posts_query="[{\"type\":\"posts_params\",\"posts_in\":\"' . $ids_string . '\"},{\"type\":\"order_offset\",\"order_by\":\"post__in\",\"order\":\"ASC\"}]"'
+                . ' posts_num="' . count( $product_ids ) . '"'
+                . ' columns="' . $cols_desktop . '"'
+                . ' columns_tablet="' . $cols_tablet . '"'
+                . ' columns_mobile="' . $cols_mobile . '"'
+                . ' post_type="product"'
+                . ' is_archive_template="no"'
+                . ']';
+
+            $output = do_shortcode( $shortcode );
+            if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+                return $output;
+            }
         }
 
-        // Use JetEngine's listing render
+        // Method 2: Use JetEngine PHP API if available
+        if ( function_exists( 'jet_engine' ) && class_exists( 'Jet_Engine' ) ) {
+            // Try the listing grid render
+            if ( isset( jet_engine()->listings ) && method_exists( jet_engine()->listings, 'get_render_instance' ) ) {
+                ob_start();
+                $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
+                    'listing_id'     => $listing_id,
+                    'lisitng_id'     => $listing_id,
+                    'posts_num'      => count( $product_ids ),
+                    'columns'        => $cols_desktop,
+                    'columns_tablet' => $cols_tablet,
+                    'columns_mobile' => $cols_mobile,
+                    'post_type'      => 'product',
+                    'posts_query'    => array(
+                        array(
+                            'type'     => 'posts_params',
+                            'posts_in' => implode( ',', $product_ids ),
+                        ),
+                        array(
+                            'type'     => 'order_offset',
+                            'order_by' => 'post__in',
+                            'order'    => 'ASC',
+                        ),
+                    ),
+                    'is_archive_template' => false,
+                ) );
+                if ( $render ) {
+                    $render->render();
+                }
+                $output = ob_get_clean();
+                if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+                    return $output;
+                }
+            }
+        }
+
+        // Method 3: Manual loop with Elementor content rendering
         ob_start();
 
-        $query_args = array(
+        $query = new WP_Query( array(
             'post_type'      => 'product',
             'post__in'       => $product_ids,
             'orderby'        => 'post__in',
             'posts_per_page' => count( $product_ids ),
-        );
-
-        $query = new WP_Query( $query_args );
+        ) );
 
         if ( $query->have_posts() ) {
-            $cols_desktop = absint( $options['cols_desktop'] ?? 3 );
-            $cols_tablet  = absint( $options['cols_tablet'] ?? 2 );
-            $cols_mobile  = absint( $options['cols_mobile'] ?? 1 );
-
             echo '<div class="pf-results-grid pf-cols-d-' . esc_attr( $cols_desktop ) . ' pf-cols-t-' . esc_attr( $cols_tablet ) . ' pf-cols-m-' . esc_attr( $cols_mobile ) . '">';
+
+            $listing_post = get_post( $listing_id );
 
             while ( $query->have_posts() ) {
                 $query->the_post();
                 echo '<div class="pf-result-item">';
 
-                // Try to use jet_engine()->listings->render_listing() if available
-                if ( class_exists( 'Jet_Engine' ) && isset( jet_engine()->listings ) ) {
-                    $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
-                        'lisitng_id' => $listing_id,
-                        'listing_id' => $listing_id,
-                    ) );
-                    if ( $render ) {
-                        $content = jet_engine()->listings->render_listing_item( $listing_id, get_the_ID() );
-                        echo $content;
+                if ( $listing_post ) {
+                    // Try Elementor rendering if the listing was built with Elementor
+                    if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance->documents->get( $listing_id ) ) {
+                        echo \Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $listing_id );
                     } else {
-                        // Fallback: render listing content directly
-                        $listing_post = get_post( $listing_id );
-                        if ( $listing_post ) {
-                            echo apply_filters( 'the_content', $listing_post->post_content );
-                        }
-                    }
-                } else {
-                    // Fallback if JetEngine API changed
-                    $listing_post = get_post( $listing_id );
-                    if ( $listing_post ) {
                         echo apply_filters( 'the_content', $listing_post->post_content );
                     }
                 }
@@ -269,7 +308,13 @@ class PF_Ajax {
             wp_reset_postdata();
         }
 
-        return ob_get_clean();
+        $output = ob_get_clean();
+        if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+            return $output;
+        }
+
+        // If all methods failed, return empty so frontend uses fallback cards
+        return '';
     }
 }
 

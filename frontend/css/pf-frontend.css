@@ -100,6 +100,17 @@
     margin: -16px 0 24px;
 }
 
+.pf-question-instruction {
+    font-size: 14px;
+    color: var(--pf-text-light);
+    margin: -16px 0 24px;
+}
+
+.pf-question-instruction--center {
+    text-align: center;
+    margin: -16px 0 24px;
+}
+
 /* === Image Grid Answers === */
 
 .pf-answers-grid--images {
@@ -171,7 +182,8 @@
     margin-bottom: 12px;
 }
 
-.pf-text-left .pf-question-hint {
+.pf-text-left .pf-question-hint,
+.pf-text-left .pf-question-instruction {
     margin: 0;
 }
 
@@ -187,21 +199,50 @@
     border-radius: var(--pf-radius-sm);
     padding: 16px 20px;
     cursor: pointer;
-    transition: border-color var(--pf-transition), background var(--pf-transition), box-shadow var(--pf-transition);
+    transition: border-color var(--pf-transition), box-shadow var(--pf-transition);
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    position: relative;
+    overflow: hidden;
+    z-index: 0;
+}
+
+/* Animated hover fill: slides in from left, slides out to right */
+.pf-answer-option--text::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--pf-text-answer-hover-bg, #f8fbff);
+    transform: translateX(-100%);
+    transition: transform 0.35s ease;
+    z-index: -1;
+}
+
+.pf-answer-option--text:hover::before {
+    transform: translateX(0);
+}
+
+/* When mouse leaves, animate out to the right */
+.pf-answer-option--text.pf-hover-out::before {
+    transform: translateX(100%);
 }
 
 .pf-answer-option--text:hover {
     border-color: var(--pf-accent);
-    background: #f8fbff;
+}
+
+/* Selected state: keep the hover fill visible */
+.pf-answer-option--text.pf-selected::before {
+    transform: translateX(0);
 }
 
 .pf-answer-option--text.pf-selected {
     border-color: var(--pf-accent);
-    background: #f0f7ff;
     box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
 }
 
@@ -303,6 +344,12 @@
     color: var(--pf-accent);
 }
 
+/* Skip button – can be styled as a full button via Elementor */
+.pf-skip-email {
+    transition: all var(--pf-transition);
+    cursor: pointer;
+}
+
 /* === Email Screen === */
 
 .pf-email-screen {
@@ -380,6 +427,16 @@
     font-size: 16px;
     color: var(--pf-text-light);
     font-weight: 500;
+}
+
+/* Custom SVG / icon library loading icon */
+img.pf-loading-icon {
+    animation: pfSpinCCW 1.2s linear infinite;
+}
+
+i.pf-loading-icon {
+    font-size: 60px;
+    animation: pfSpinCCW 1.2s linear infinite;
 }
 
 /* === Results Screen === */

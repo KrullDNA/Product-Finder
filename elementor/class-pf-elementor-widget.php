@@ -70,6 +70,17 @@ class PF_Elementor_Widget extends Widget_Base {
             'default' => '',
         ) );
 
+        $this->add_control( 'loading_svg_icon', array(
+            'label'       => __( 'Loading Screen SVG Icon', 'product-finder' ),
+            'type'        => Controls_Manager::ICONS,
+            'default'     => array(
+                'value'   => '',
+                'library' => '',
+            ),
+            'description' => __( 'Choose a custom SVG icon to replace the default loading spinner. Upload your own SVG or pick from the icon library.', 'product-finder' ),
+            'separator'   => 'before',
+        ) );
+
         $this->end_controls_section();
     }
 
@@ -243,24 +254,46 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
-        $this->add_control( 'hint_heading', array(
-            'label'     => __( 'Hint Text', 'product-finder' ),
+        $this->add_control( 'instruction_heading', array(
+            'label'     => __( 'Instruction Text', 'product-finder' ),
             'type'      => Controls_Manager::HEADING,
             'separator' => 'before',
         ) );
 
-        $this->add_control( 'hint_color', array(
-            'label'     => __( 'Hint Color', 'product-finder' ),
+        $this->add_control( 'instruction_color', array(
+            'label'     => __( 'Instruction Color', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-question-hint' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .pf-question-instruction, {{WRAPPER}} .pf-question-hint' => 'color: {{VALUE}};',
             ),
         ) );
 
         $this->add_group_control( Group_Control_Typography::get_type(), array(
-            'name'     => 'hint_typography',
-            'label'    => __( 'Hint Typography', 'product-finder' ),
-            'selector' => '{{WRAPPER}} .pf-question-hint',
+            'name'     => 'instruction_typography',
+            'label'    => __( 'Instruction Typography', 'product-finder' ),
+            'selector' => '{{WRAPPER}} .pf-question-instruction, {{WRAPPER}} .pf-question-hint',
+        ) );
+
+        $this->add_responsive_control( 'instruction_margin', array(
+            'label'      => __( 'Instruction Margin', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-question-instruction, {{WRAPPER}} .pf-question-hint' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'instruction_align', array(
+            'label'     => __( 'Instruction Alignment', 'product-finder' ),
+            'type'      => Controls_Manager::CHOOSE,
+            'options'   => array(
+                'left'   => array( 'title' => __( 'Left', 'product-finder' ), 'icon' => 'eicon-text-align-left' ),
+                'center' => array( 'title' => __( 'Center', 'product-finder' ), 'icon' => 'eicon-text-align-center' ),
+                'right'  => array( 'title' => __( 'Right', 'product-finder' ), 'icon' => 'eicon-text-align-right' ),
+            ),
+            'selectors' => array(
+                '{{WRAPPER}} .pf-question-instruction, {{WRAPPER}} .pf-question-hint' => 'text-align: {{VALUE}};',
+            ),
         ) );
 
         $this->end_controls_section();
@@ -769,32 +802,91 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
-        // Link button (Skip)
-        $this->add_control( 'btn_link_heading', array(
-            'label'     => __( 'Link Button (Skip)', 'product-finder' ),
+        // Skip / Link button – full styling
+        $this->add_control( 'btn_skip_heading', array(
+            'label'     => __( 'Skip & View Results Button', 'product-finder' ),
             'type'      => Controls_Manager::HEADING,
             'separator' => 'before',
         ) );
 
-        $this->add_control( 'btn_link_color', array(
-            'label'     => __( 'Color', 'product-finder' ),
+        $this->add_control( 'btn_skip_bg', array(
+            'label'     => __( 'Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-btn-link' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .pf-skip-email' => 'background-color: {{VALUE}};',
             ),
         ) );
 
-        $this->add_control( 'btn_link_hover_color', array(
-            'label'     => __( 'Hover Color', 'product-finder' ),
+        $this->add_control( 'btn_skip_color', array(
+            'label'     => __( 'Text Color', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-btn-link:hover' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .pf-skip-email' => 'color: {{VALUE}};',
             ),
+        ) );
+
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'btn_skip_border',
+            'selector' => '{{WRAPPER}} .pf-skip-email',
+        ) );
+
+        $this->add_responsive_control( 'btn_skip_padding', array(
+            'label'      => __( 'Padding', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-skip-email' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'btn_skip_radius', array(
+            'label'      => __( 'Border Radius', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-skip-email' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Box_Shadow::get_type(), array(
+            'name'     => 'btn_skip_shadow',
+            'selector' => '{{WRAPPER}} .pf-skip-email',
         ) );
 
         $this->add_group_control( Group_Control_Typography::get_type(), array(
-            'name'     => 'btn_link_typography',
-            'selector' => '{{WRAPPER}} .pf-btn-link',
+            'name'     => 'btn_skip_typography',
+            'selector' => '{{WRAPPER}} .pf-skip-email',
+        ) );
+
+        // Skip button hover
+        $this->add_control( 'btn_skip_hover_heading', array(
+            'label'     => __( 'Skip Button Hover', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'btn_skip_hover_bg', array(
+            'label'     => __( 'Hover Background', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-skip-email:hover' => 'background-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_control( 'btn_skip_hover_color', array(
+            'label'     => __( 'Hover Text Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-skip-email:hover' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_control( 'btn_skip_hover_border_color', array(
+            'label'     => __( 'Hover Border Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-skip-email:hover' => 'border-color: {{VALUE}};',
+            ),
         ) );
 
         $this->end_controls_section();
@@ -1182,7 +1274,44 @@ class PF_Elementor_Widget extends Widget_Base {
             return;
         }
 
+        // Render the shortcode
         echo do_shortcode( '[product_finder id="' . $finder_id . '"]' );
+
+        // If a custom SVG icon was chosen, inject it to replace the default loading icon
+        $icon_settings = $settings['loading_svg_icon'] ?? array();
+        if ( ! empty( $icon_settings['value'] ) ) {
+            $icon_html = '';
+
+            if ( is_array( $icon_settings['value'] ) && ! empty( $icon_settings['value']['url'] ) ) {
+                // SVG upload – render as <img> tag
+                $icon_html = '<img src="' . esc_url( $icon_settings['value']['url'] ) . '" alt="" class="pf-custom-loading-img">';
+            } else {
+                // Icon library (Font Awesome, etc.) – render via Elementor helper
+                ob_start();
+                \Elementor\Icons_Manager::render_icon( $icon_settings, array( 'aria-hidden' => 'true', 'class' => 'pf-custom-loading-i' ) );
+                $icon_html = ob_get_clean();
+            }
+
+            if ( $icon_html ) {
+                ?>
+                <script>
+                (function(){
+                    var wrap = document.getElementById('pf-finder-<?php echo esc_js( $finder_id ); ?>');
+                    if (!wrap) return;
+                    var oldIcon = wrap.querySelector('.pf-loading-icon');
+                    if (!oldIcon) return;
+                    var tmp = document.createElement('div');
+                    tmp.innerHTML = <?php echo wp_json_encode( $icon_html ); ?>;
+                    var newIcon = tmp.firstElementChild;
+                    if (newIcon) {
+                        newIcon.classList.add('pf-loading-icon');
+                        oldIcon.parentNode.replaceChild(newIcon, oldIcon);
+                    }
+                })();
+                </script>
+                <?php
+            }
+        }
     }
 
     protected function content_template() {

@@ -82,9 +82,10 @@ class PF_Frontend {
         $inline_data = array();
         foreach ( $questions as $q ) {
             $q_data = array(
-                'text'     => $q['text'],
-                'multiple' => (bool) $q['multiple'],
-                'answers'  => array(),
+                'text'        => $q['text'],
+                'instruction' => $q['instruction'] ?? '',
+                'multiple'    => (bool) $q['multiple'],
+                'answers'     => array(),
             );
             foreach ( $q['answers'] as $a ) {
                 $image_url = ! empty( $a['image_id'] ) ? wp_get_attachment_image_url( $a['image_id'], 'medium' ) : '';

@@ -182,9 +182,10 @@ class PF_Admin {
 
     private function render_question_template( $qi, $question ) {
         $question = wp_parse_args( $question, array(
-            'text'      => '',
-            'multiple'  => 0,
-            'answers'   => array(),
+            'text'        => '',
+            'instruction' => '',
+            'multiple'    => 0,
+            'answers'     => array(),
         ) );
         $name_prefix = "pf_questions[{$qi}]";
         ?>
@@ -199,6 +200,11 @@ class PF_Admin {
                 <p>
                     <label><strong><?php esc_html_e( 'Question Text', 'product-finder' ); ?></strong></label><br>
                     <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $question['text'] ); ?>" class="widefat pf-question-text-input">
+                </p>
+                <p>
+                    <label><strong><?php esc_html_e( 'Instruction Text', 'product-finder' ); ?></strong></label><br>
+                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[instruction]" value="<?php echo esc_attr( $question['instruction'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. Select all that apply, Choose your favourite…', 'product-finder' ); ?>">
+                    <span class="description"><?php esc_html_e( 'Shown below the question on the frontend. Leave blank to use the automatic hint.', 'product-finder' ); ?></span>
                 </p>
                 <p>
                     <label>
@@ -331,9 +337,10 @@ class PF_Admin {
         }
         foreach ( $raw as $q ) {
             $question = array(
-                'text'     => sanitize_text_field( $q['text'] ?? '' ),
-                'multiple' => ! empty( $q['multiple'] ) ? 1 : 0,
-                'answers'  => array(),
+                'text'        => sanitize_text_field( $q['text'] ?? '' ),
+                'instruction' => sanitize_text_field( $q['instruction'] ?? '' ),
+                'multiple'    => ! empty( $q['multiple'] ) ? 1 : 0,
+                'answers'     => array(),
             );
             if ( ! empty( $q['answers'] ) && is_array( $q['answers'] ) ) {
                 foreach ( $q['answers'] as $a ) {

@@ -58,6 +58,19 @@
                 self.handleAnswerClick($(this));
             });
 
+            // Text answer hover-out animation: slide out to the right
+            this.$el.on('mouseenter', '.pf-answer-option--text', function () {
+                $(this).removeClass('pf-hover-out');
+            });
+            this.$el.on('mouseleave', '.pf-answer-option--text', function () {
+                if (!$(this).hasClass('pf-selected')) {
+                    $(this).addClass('pf-hover-out');
+                    // Remove the class after the animation so it's ready for next hover
+                    var $opt = $(this);
+                    setTimeout(function () { $opt.removeClass('pf-hover-out'); }, 350);
+                }
+            });
+
             this.$el.on('click', '.pf-btn-continue', function () {
                 self.goNext();
             });
@@ -92,9 +105,12 @@
             var hasImages = q.answers.some(function (a) { return !!a.image; });
             var html = '<div class="pf-question-slide" data-qi="' + idx + '">';
 
+            var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : 'Select one option');
+
             if (hasImages) {
                 // Image grid layout
                 html += '<h2 class="pf-question-text pf-question-text--center">' + this.escHtml(q.text) + '</h2>';
+                html += '<p class="pf-question-instruction pf-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
                 html += '<div class="pf-answers-grid pf-answers-grid--images">';
                 for (var i = 0; i < q.answers.length; i++) {
                     var a = q.answers[i];
@@ -115,7 +131,7 @@
                 html += '<div class="pf-text-layout">';
                 html += '<div class="pf-text-left">';
                 html += '<h2 class="pf-question-text">' + this.escHtml(q.text) + '</h2>';
-                html += '<p class="pf-question-hint">' + (q.multiple ? 'Select all that apply' : 'Select one option') + '</p>';
+                html += '<p class="pf-question-instruction">' + this.escHtml(instructionText) + '</p>';
                 html += '</div>';
                 html += '<div class="pf-text-right">';
                 html += '<div class="pf-answers-grid pf-answers-grid--text">';
@@ -287,6 +303,7 @@
         /* ───────── Compute results ───────── */
 
         computeResults: function (callback) {
+            var self = this;
             $.post(pfFrontend.ajax_url, {
                 action: 'pf_compute_results',
                 nonce: pfFrontend.nonce,
@@ -295,7 +312,12 @@
             }, function (res) {
                 if (res.success) {
                     callback(res.data);
+                } else {
+                    // Show results with whatever we got (fallback)
+                    callback({ products: [], product_ids: [], listing_html: '', options: self.options });
                 }
+            }).fail(function () {
+                callback({ products: [], product_ids: [], listing_html: '', options: self.options });
             });
         },
 
@@ -304,9 +326,10 @@
         showResults: function (data) {
             this.$loadingScreen.hide();
 
-            // If CrocoBlock listing HTML was returned, use it
-            if (data.listing_html) {
-                this.$resultsScreen.find('.pf-results-container').html(data.listing_html);
+            // If CrocoBlock listing HTML was returned and has real content, use it
+            var listingHtml = (data.listing_html || '').trim();
+            if (listingHtml.length > 0) {
+                this.$resultsScreen.find('.pf-results-container').html(listingHtml);
             } else {
                 // Fallback: render product cards
                 this.renderFallbackResults(data);
