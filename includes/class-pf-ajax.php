@@ -216,6 +216,11 @@ class PF_Ajax {
             return '';
         }
 
+        // Ensure WooCommerce cart, session and frontend are fully loaded.
+        // Widgets like Add to Cart need the cart and session objects, which
+        // may not be initialised during an AJAX request.
+        $this->ensure_wc_frontend();
+
         // Method 1: Use the jet-engine shortcode (most reliable)
         if ( shortcode_exists( 'jet_engine_listing_grid' ) ) {
             $ids_string = implode( ',', $product_ids );
@@ -231,7 +236,9 @@ class PF_Ajax {
                 . ' is_archive_template="no"'
                 . ']';
 
-            $output = do_shortcode( $shortcode );
+            $output = $this->safe_render( function () use ( $shortcode ) {
+                return do_shortcode( $shortcode );
+            } );
             if ( ! empty( trim( strip_tags( $output ) ) ) ) {
                 return $output;
             }
@@ -241,32 +248,33 @@ class PF_Ajax {
         if ( function_exists( 'jet_engine' ) && class_exists( 'Jet_Engine' ) ) {
             // Try the listing grid render
             if ( isset( jet_engine()->listings ) && method_exists( jet_engine()->listings, 'get_render_instance' ) ) {
-                ob_start();
-                $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
-                    'listing_id'     => $listing_id,
-                    'lisitng_id'     => $listing_id,
-                    'posts_num'      => count( $product_ids ),
-                    'columns'        => $cols_desktop,
-                    'columns_tablet' => $cols_tablet,
-                    'columns_mobile' => $cols_mobile,
-                    'post_type'      => 'product',
-                    'posts_query'    => array(
-                        array(
-                            'type'     => 'posts_params',
-                            'posts_in' => implode( ',', $product_ids ),
+                $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
+                    $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
+                        'listing_id'     => $listing_id,
+                        'lisitng_id'     => $listing_id,
+                        'posts_num'      => count( $product_ids ),
+                        'columns'        => $cols_desktop,
+                        'columns_tablet' => $cols_tablet,
+                        'columns_mobile' => $cols_mobile,
+                        'post_type'      => 'product',
+                        'posts_query'    => array(
+                            array(
+                                'type'     => 'posts_params',
+                                'posts_in' => implode( ',', $product_ids ),
+                            ),
+                            array(
+                                'type'     => 'order_offset',
+                                'order_by' => 'post__in',
+                                'order'    => 'ASC',
+                            ),
                         ),
-                        array(
-                            'type'     => 'order_offset',
-                            'order_by' => 'post__in',
-                            'order'    => 'ASC',
-                        ),
-                    ),
-                    'is_archive_template' => false,
-                ) );
-                if ( $render ) {
-                    $render->render();
-                }
-                $output = ob_get_clean();
+                        'is_archive_template' => false,
+                    ) );
+                    if ( $render ) {
+                        $render->render();
+                    }
+                    return '';
+                } );
                 if ( ! empty( trim( strip_tags( $output ) ) ) ) {
                     return $output;
                 }
@@ -274,47 +282,115 @@ class PF_Ajax {
         }
 
         // Method 3: Manual loop with Elementor content rendering
-        ob_start();
+        $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
+            $query = new WP_Query( array(
+                'post_type'      => 'product',
+                'post__in'       => $product_ids,
+                'orderby'        => 'post__in',
+                'posts_per_page' => count( $product_ids ),
+            ) );
 
-        $query = new WP_Query( array(
-            'post_type'      => 'product',
-            'post__in'       => $product_ids,
-            'orderby'        => 'post__in',
-            'posts_per_page' => count( $product_ids ),
-        ) );
+            if ( $query->have_posts() ) {
+                echo '<div class="pf-results-grid pf-cols-d-' . esc_attr( $cols_desktop ) . ' pf-cols-t-' . esc_attr( $cols_tablet ) . ' pf-cols-m-' . esc_attr( $cols_mobile ) . '">';
 
-        if ( $query->have_posts() ) {
-            echo '<div class="pf-results-grid pf-cols-d-' . esc_attr( $cols_desktop ) . ' pf-cols-t-' . esc_attr( $cols_tablet ) . ' pf-cols-m-' . esc_attr( $cols_mobile ) . '">';
+                $listing_post = get_post( $listing_id );
 
-            $listing_post = get_post( $listing_id );
+                while ( $query->have_posts() ) {
+                    $query->the_post();
 
-            while ( $query->have_posts() ) {
-                $query->the_post();
-                echo '<div class="pf-result-item">';
-
-                if ( $listing_post ) {
-                    // Try Elementor rendering if the listing was built with Elementor
-                    if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance->documents->get( $listing_id ) ) {
-                        echo \Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $listing_id );
-                    } else {
-                        echo apply_filters( 'the_content', $listing_post->post_content );
+                    // Ensure the WooCommerce global $product is set for this post
+                    if ( function_exists( 'wc_setup_product_data' ) ) {
+                        wc_setup_product_data( get_the_ID() );
                     }
+
+                    echo '<div class="pf-result-item">';
+
+                    if ( $listing_post ) {
+                        if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance->documents->get( $listing_id ) ) {
+                            echo \Elementor\Plugin::$instance->frontend->get_builder_content_for_display( $listing_id );
+                        } else {
+                            echo apply_filters( 'the_content', $listing_post->post_content );
+                        }
+                    }
+
+                    echo '</div>';
                 }
 
                 echo '</div>';
+                wp_reset_postdata();
             }
-
-            echo '</div>';
-            wp_reset_postdata();
-        }
-
-        $output = ob_get_clean();
+            return '';
+        } );
         if ( ! empty( trim( strip_tags( $output ) ) ) ) {
             return $output;
         }
 
         // If all methods failed, return empty so frontend uses fallback cards
         return '';
+    }
+
+    /**
+     * Ensure WooCommerce frontend environment is fully loaded.
+     *
+     * During AJAX the cart, session and customer objects may not be
+     * initialised yet.  Widgets such as the WooCommerce Add-to-Cart
+     * button depend on these being available.
+     */
+    private function ensure_wc_frontend() {
+        if ( ! function_exists( 'WC' ) || ! WC() ) {
+            return;
+        }
+
+        // wc_load_cart() (WC 3.6+) initialises session, customer & cart.
+        if ( function_exists( 'wc_load_cart' ) ) {
+            wc_load_cart();
+            return;
+        }
+
+        // Fallback for older WooCommerce versions.
+        if ( is_null( WC()->session ) && class_exists( 'WC_Session_Handler' ) ) {
+            WC()->session = new \WC_Session_Handler();
+            WC()->session->init();
+        }
+
+        if ( is_null( WC()->customer ) && class_exists( 'WC_Customer' ) ) {
+            WC()->customer = new \WC_Customer( get_current_user_id(), true );
+        }
+
+        if ( is_null( WC()->cart ) && class_exists( 'WC_Cart' ) ) {
+            WC()->cart = new \WC_Cart();
+        }
+    }
+
+    /**
+     * Run a render callback inside an output buffer with error handling.
+     *
+     * Captures any stray PHP output (warnings, notices) that would
+     * otherwise corrupt the JSON response.  Also catches Throwable
+     * errors so a single broken widget does not kill the whole request.
+     *
+     * @param callable $callback  Must either echo or return content.
+     * @return string  Rendered HTML.
+     */
+    private function safe_render( callable $callback ) {
+        ob_start();
+        try {
+            $returned = $callback();
+        } catch ( \Throwable $e ) {
+            // Discard partial output from the failed render.
+            ob_end_clean();
+            return '';
+        }
+
+        $echoed = ob_get_clean();
+
+        // If the callback returned content, prefer that; otherwise use
+        // whatever was echoed into the output buffer.
+        if ( ! empty( $returned ) ) {
+            return $returned;
+        }
+
+        return $echoed;
     }
 }
 
