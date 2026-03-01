@@ -102,10 +102,19 @@ class PF_Ajax {
     public function compute_results() {
         check_ajax_referer( 'pf_frontend_nonce', 'nonce' );
 
+        // Record baseline output buffer level.  Rendering CrocoBlock listing
+        // templates (especially with WooCommerce widgets like Add to Cart)
+        // can flush / destroy output buffers, leaking HTML into the response
+        // stream before wp_send_json_success() runs.  We start our own buffer
+        // here and clean up everything before sending JSON.
+        $ob_baseline = ob_get_level();
+        ob_start();
+
         $finder_id = absint( $_POST['finder_id'] ?? 0 );
         $answers   = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
 
         if ( ! $finder_id || ! is_array( $answers ) ) {
+            $this->ob_clean_to( $ob_baseline );
             wp_send_json_error( array( 'message' => __( 'Invalid data.', 'product-finder' ) ) );
         }
 
@@ -120,6 +129,7 @@ class PF_Ajax {
         ) );
 
         if ( ! is_array( $questions ) ) {
+            $this->ob_clean_to( $ob_baseline );
             wp_send_json_error();
         }
 
@@ -201,6 +211,14 @@ class PF_Ajax {
                 'permalink' => $product->get_permalink(),
                 'score'     => $product_scores[ $pid ],
             );
+        }
+
+        // Discard any stray output that leaked during rendering (e.g.
+        // WooCommerce Add to Cart widget flushing output buffers).
+        $stray = $this->ob_clean_to( $ob_baseline );
+        if ( ! empty( $stray ) ) {
+            $this->_debug[] = 'Stray output cleaned before JSON (len=' . strlen( $stray ) . '): '
+                . substr( $stray, 0, 500 );
         }
 
         wp_send_json_success( array(
@@ -420,18 +438,37 @@ class PF_Ajax {
      * @return string  Rendered HTML.
      */
     private function safe_render( callable $callback ) {
+        $level_before = ob_get_level();
         ob_start();
         try {
             $returned = $callback();
         } catch ( \Throwable $e ) {
-            $partial = ob_get_clean();
+            // Clean up any buffers added during the callback.
+            while ( ob_get_level() > $level_before ) {
+                ob_end_clean();
+            }
             $this->_debug[] = 'safe_render CAUGHT ERROR: ' . $e->getMessage()
-                . ' in ' . $e->getFile() . ':' . $e->getLine()
-                . ', partial_output_len=' . strlen( $partial );
+                . ' in ' . $e->getFile() . ':' . $e->getLine();
             return '';
         }
 
-        $echoed = ob_get_clean();
+        // If the rendering destroyed or flushed our buffer (common with
+        // WooCommerce widgets), the output went to the parent buffer.
+        // Clean up any extra levels that were added.
+        if ( ob_get_level() > $level_before + 1 ) {
+            while ( ob_get_level() > $level_before + 1 ) {
+                ob_end_clean();
+            }
+        }
+
+        // Grab our buffer if it still exists.
+        $echoed = '';
+        if ( ob_get_level() > $level_before ) {
+            $echoed = ob_get_clean();
+        } else {
+            // Our buffer was destroyed – nothing to capture.
+            $this->_debug[] = 'safe_render: output buffer was destroyed by rendering';
+        }
 
         if ( ! empty( $echoed ) ) {
             $this->_debug[] = 'safe_render: echoed_len=' . strlen( $echoed );
@@ -444,6 +481,23 @@ class PF_Ajax {
         }
 
         return $echoed;
+    }
+
+    /**
+     * Clean output buffers back to a baseline level.
+     *
+     * Discards all buffered content above the given level and returns it
+     * as a string (useful for debug logging).
+     *
+     * @param int $baseline  The ob_get_level() value to return to.
+     * @return string  Any stray output that was captured.
+     */
+    private function ob_clean_to( $baseline ) {
+        $stray = '';
+        while ( ob_get_level() > $baseline ) {
+            $stray .= ob_get_clean();
+        }
+        return $stray;
     }
 }
 
