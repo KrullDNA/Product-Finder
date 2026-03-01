@@ -209,12 +209,6 @@
     z-index: 0;
 }
 
-/* Force element background to stay constant – prevents stale Elementor :hover CSS */
-.pf-answer-option--text,
-.pf-answer-option--text:hover {
-    background-color: var(--pf-card-bg, #ffffff) !important;
-}
-
 /* Animated hover fill: slides in from left, slides out to right */
 .pf-answer-option--text::before {
     content: '';
@@ -223,7 +217,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--pf-text-answer-hover-bg, #f8fbff);
+    background: var(--pf-text-hover-bg, transparent);
     transform: translateX(-100%);
     transition: transform 0.35s ease;
     z-index: -1;
