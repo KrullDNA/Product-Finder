@@ -173,10 +173,17 @@ class PF_Ajax {
         // Limit results
         $top_ids = array_slice( array_keys( $product_scores ), 0, (int) $options['num_results'] );
 
+        // Debug log
+        $this->_debug = array();
+
         // If CrocoBlock listing template is set, render via JetEngine
         $html = '';
         if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) ) {
+            $this->_debug[] = 'listing_template=' . $options['listing_template'] . ', product_ids=' . implode( ',', $top_ids );
             $html = $this->render_crocoblock_listing( $top_ids, $options );
+            $this->_debug[] = 'final listing_html length=' . strlen( $html );
+        } else {
+            $this->_debug[] = 'No listing template set or no product IDs';
         }
 
         // Build basic product data as fallback
@@ -201,6 +208,7 @@ class PF_Ajax {
             'product_ids' => $top_ids,
             'listing_html'=> $html,
             'options'     => $options,
+            'debug'       => $this->_debug,
         ) );
     }
 
@@ -221,6 +229,9 @@ class PF_Ajax {
         // may not be initialised during an AJAX request.
         $this->ensure_wc_frontend();
 
+        $this->_debug[] = 'WC ready: cart=' . ( is_null( WC()->cart ) ? 'NULL' : 'OK' )
+            . ', session=' . ( is_null( WC()->session ) ? 'NULL' : 'OK' );
+
         // Method 1: Use the jet-engine shortcode (most reliable)
         if ( shortcode_exists( 'jet_engine_listing_grid' ) ) {
             $ids_string = implode( ',', $product_ids );
@@ -236,18 +247,31 @@ class PF_Ajax {
                 . ' is_archive_template="no"'
                 . ']';
 
+            $this->_debug[] = 'Method 1: jet_engine_listing_grid shortcode exists';
+
             $output = $this->safe_render( function () use ( $shortcode ) {
                 return do_shortcode( $shortcode );
             } );
-            if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+
+            $stripped = trim( strip_tags( $output ) );
+            $this->_debug[] = 'Method 1 output: raw_len=' . strlen( $output )
+                . ', stripped_len=' . strlen( $stripped )
+                . ', first_500=' . substr( $output, 0, 500 );
+
+            if ( ! empty( $stripped ) ) {
+                $this->_debug[] = 'Method 1 SUCCESS – returning output';
                 return $output;
             }
+            $this->_debug[] = 'Method 1 FAILED – stripped output is empty';
+        } else {
+            $this->_debug[] = 'Method 1: jet_engine_listing_grid shortcode NOT found';
         }
 
         // Method 2: Use JetEngine PHP API if available
         if ( function_exists( 'jet_engine' ) && class_exists( 'Jet_Engine' ) ) {
-            // Try the listing grid render
             if ( isset( jet_engine()->listings ) && method_exists( jet_engine()->listings, 'get_render_instance' ) ) {
+                $this->_debug[] = 'Method 2: JetEngine PHP API available';
+
                 $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
                     $render = jet_engine()->listings->get_render_instance( 'listing-grid', array(
                         'listing_id'     => $listing_id,
@@ -275,13 +299,27 @@ class PF_Ajax {
                     }
                     return '';
                 } );
-                if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+
+                $stripped = trim( strip_tags( $output ) );
+                $this->_debug[] = 'Method 2 output: raw_len=' . strlen( $output )
+                    . ', stripped_len=' . strlen( $stripped )
+                    . ', first_500=' . substr( $output, 0, 500 );
+
+                if ( ! empty( $stripped ) ) {
+                    $this->_debug[] = 'Method 2 SUCCESS – returning output';
                     return $output;
                 }
+                $this->_debug[] = 'Method 2 FAILED – stripped output is empty';
+            } else {
+                $this->_debug[] = 'Method 2: JetEngine listings API NOT available';
             }
+        } else {
+            $this->_debug[] = 'Method 2: JetEngine NOT loaded';
         }
 
         // Method 3: Manual loop with Elementor content rendering
+        $this->_debug[] = 'Method 3: Manual loop with Elementor';
+
         $output = $this->safe_render( function () use ( $listing_id, $product_ids, $cols_desktop, $cols_tablet, $cols_mobile ) {
             $query = new WP_Query( array(
                 'post_type'      => 'product',
@@ -321,11 +359,20 @@ class PF_Ajax {
             }
             return '';
         } );
-        if ( ! empty( trim( strip_tags( $output ) ) ) ) {
+
+        $stripped = trim( strip_tags( $output ) );
+        $this->_debug[] = 'Method 3 output: raw_len=' . strlen( $output )
+            . ', stripped_len=' . strlen( $stripped )
+            . ', first_500=' . substr( $output, 0, 500 );
+
+        if ( ! empty( $stripped ) ) {
+            $this->_debug[] = 'Method 3 SUCCESS – returning output';
             return $output;
         }
+        $this->_debug[] = 'Method 3 FAILED – stripped output is empty';
 
         // If all methods failed, return empty so frontend uses fallback cards
+        $this->_debug[] = 'ALL METHODS FAILED – returning empty string';
         return '';
     }
 
@@ -377,12 +424,18 @@ class PF_Ajax {
         try {
             $returned = $callback();
         } catch ( \Throwable $e ) {
-            // Discard partial output from the failed render.
-            ob_end_clean();
+            $partial = ob_get_clean();
+            $this->_debug[] = 'safe_render CAUGHT ERROR: ' . $e->getMessage()
+                . ' in ' . $e->getFile() . ':' . $e->getLine()
+                . ', partial_output_len=' . strlen( $partial );
             return '';
         }
 
         $echoed = ob_get_clean();
+
+        if ( ! empty( $echoed ) ) {
+            $this->_debug[] = 'safe_render: echoed_len=' . strlen( $echoed );
+        }
 
         // If the callback returned content, prefer that; otherwise use
         // whatever was echoed into the output buffer.

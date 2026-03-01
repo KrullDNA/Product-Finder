@@ -318,13 +318,26 @@
                 finder_id: this.finderId,
                 answers: JSON.stringify(this.answers)
             }, function (res) {
+                // Debug: log the full AJAX response
+                if (res && res.data && res.data.debug) {
+                    console.group('[Product Finder] Debug – compute_results');
+                    for (var i = 0; i < res.data.debug.length; i++) {
+                        console.log(res.data.debug[i]);
+                    }
+                    console.log('listing_html length:', (res.data.listing_html || '').length);
+                    console.log('products count:', (res.data.products || []).length);
+                    console.groupEnd();
+                }
+
                 if (res.success) {
                     callback(res.data);
                 } else {
-                    // Show results with whatever we got (fallback)
+                    console.warn('[Product Finder] AJAX returned success=false', res);
                     callback({ products: [], product_ids: [], listing_html: '', options: self.options });
                 }
-            }).fail(function () {
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('[Product Finder] AJAX FAILED:', textStatus, errorThrown);
+                console.error('[Product Finder] Response text:', jqXHR.responseText ? jqXHR.responseText.substring(0, 1000) : '(empty)');
                 callback({ products: [], product_ids: [], listing_html: '', options: self.options });
             });
         },
