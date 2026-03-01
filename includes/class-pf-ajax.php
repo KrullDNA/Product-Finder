@@ -213,12 +213,22 @@ class PF_Ajax {
             );
         }
 
-        // Discard any stray output that leaked during rendering (e.g.
-        // WooCommerce Add to Cart widget flushing output buffers).
+        // Capture any stray output that leaked during rendering (e.g.
+        // WooCommerce Add to Cart widget flushing / destroying output
+        // buffers).  When safe_render()'s own buffer is destroyed the
+        // rendered HTML ends up in the parent buffer that we started at
+        // line 111.  If $html is still empty but the stray output
+        // contains valid listing HTML, recover it instead of discarding.
         $stray = $this->ob_clean_to( $ob_baseline );
         if ( ! empty( $stray ) ) {
-            $this->_debug[] = 'Stray output cleaned before JSON (len=' . strlen( $stray ) . '): '
-                . substr( $stray, 0, 500 );
+            $stray_stripped = trim( strip_tags( $stray ) );
+            if ( empty( $html ) && ! empty( $stray_stripped ) ) {
+                $html = $stray;
+                $this->_debug[] = 'Recovered listing HTML from stray output (len=' . strlen( $stray ) . ')';
+            } else {
+                $this->_debug[] = 'Stray output discarded (len=' . strlen( $stray ) . '): '
+                    . substr( $stray, 0, 500 );
+            }
         }
 
         wp_send_json_success( array(
