@@ -534,7 +534,7 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'     => __( 'Selected Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-answer-option--text.pf-selected' => 'background-color: {{VALUE}};',
+                '{{WRAPPER}} .pf-answer-option--text.pf-selected::before' => 'background: {{VALUE}};',
             ),
         ) );
 
@@ -571,7 +571,7 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'     => __( 'Hover Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-answer-option--text:hover' => 'background-color: {{VALUE}};',
+                '{{WRAPPER}} .pf-answer-option--text::before' => 'background: {{VALUE}};',
             ),
         ) );
 
