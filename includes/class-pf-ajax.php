@@ -286,6 +286,14 @@ class PF_Ajax {
 
         remove_action( 'the_post', $product_setup );
 
+        // Elementor widgets declare their JS/CSS dependencies via
+        // get_script_depends() and get_style_depends().  During normal
+        // page rendering Elementor processes these automatically, but
+        // during AJAX the dependency system doesn't run.  Parse the
+        // rendered HTML for widget types and explicitly enqueue their
+        // declared dependencies so the asset-diff below captures them.
+        $this->enqueue_widget_dependencies( $html );
+
         // Capture CSS/JS enqueued during rendering and collect their
         // URLs so the frontend can load them dynamically.
         $this->_new_styles  = $this->collect_asset_urls( wp_styles(),  array_diff( wp_styles()->queue,  $styles_before ) );
@@ -476,6 +484,73 @@ class PF_Ajax {
             $urls[] = $src;
         }
         return $urls;
+    }
+
+    /**
+     * Enqueue script/style dependencies declared by Elementor widgets
+     * found in the rendered listing HTML.
+     *
+     * During normal page rendering Elementor automatically processes
+     * get_script_depends() and get_style_depends() for every widget.
+     * During AJAX this doesn't happen, so swatch plugins (and other
+     * widgets) never get their CSS/JS enqueued.  This method parses
+     * data-widget_type attributes from the rendered HTML, looks up
+     * each widget in Elementor's registry, and enqueues their declared
+     * dependencies so our asset-diff picks them up.
+     *
+     * @param string $html  Rendered listing HTML.
+     */
+    private function enqueue_widget_dependencies( $html ) {
+        if ( empty( $html ) || ! class_exists( '\Elementor\Plugin' ) ) {
+            return;
+        }
+
+        $plugin = \Elementor\Plugin::$instance;
+        if ( ! $plugin || ! isset( $plugin->widgets_manager ) ) {
+            return;
+        }
+
+        $widget_manager = $plugin->widgets_manager;
+
+        // Extract unique widget types from the rendered HTML.
+        if ( ! preg_match_all( '/data-widget_type="([^"]+)"/', $html, $matches ) ) {
+            return;
+        }
+
+        $enqueued = array();
+        foreach ( array_unique( $matches[1] ) as $widget_type ) {
+            // widget_type is "widget_name.skin_name", we need just the name.
+            $widget_name = explode( '.', $widget_type )[0];
+
+            $widget = $widget_manager->get_widget_types( $widget_name );
+            if ( ! $widget ) {
+                continue;
+            }
+
+            // Enqueue declared script dependencies.
+            if ( method_exists( $widget, 'get_script_depends' ) ) {
+                foreach ( $widget->get_script_depends() as $handle ) {
+                    if ( wp_script_is( $handle, 'registered' ) && ! wp_script_is( $handle, 'enqueued' ) ) {
+                        wp_enqueue_script( $handle );
+                        $enqueued[] = 'js:' . $handle;
+                    }
+                }
+            }
+
+            // Enqueue declared style dependencies.
+            if ( method_exists( $widget, 'get_style_depends' ) ) {
+                foreach ( $widget->get_style_depends() as $handle ) {
+                    if ( wp_style_is( $handle, 'registered' ) && ! wp_style_is( $handle, 'enqueued' ) ) {
+                        wp_enqueue_style( $handle );
+                        $enqueued[] = 'css:' . $handle;
+                    }
+                }
+            }
+        }
+
+        if ( ! empty( $enqueued ) ) {
+            $this->_debug[] = 'Widget dependencies enqueued: ' . implode( ', ', $enqueued );
+        }
     }
 
     /**
