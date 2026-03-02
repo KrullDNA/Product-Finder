@@ -337,6 +337,7 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
 
         // Ensure WooCommerce's AJAX add-to-cart handler is loaded.
         wp_enqueue_script( 'wc-add-to-cart' );
+        wp_enqueue_script( 'wc-add-to-cart-variation' );
 
         // Resolve the product object.
         $the_product = $product;
@@ -418,6 +419,36 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
                 esc_html( $button_text ),
                 $icon_html
             );
+
+            // Hidden WooCommerce variation form.
+            // Swatch plugins (e.g. FiF VSE) require a .variations_form with
+            // data-product_variations and <select> elements to drive variation
+            // selection.  Without this form, clicking a swatch cannot trigger
+            // WooCommerce's found_variation event.
+            $available_variations = $the_product->get_available_variations();
+            $attributes           = $the_product->get_variation_attributes();
+
+            printf(
+                '<form class="variations_form cart" data-product_id="%d" data-product_variations="%s" style="position:absolute;width:0;height:0;overflow:hidden;clip:rect(0,0,0,0);">',
+                $product_id,
+                esc_attr( wp_json_encode( $available_variations ) )
+            );
+            echo '<table class="variations"><tbody>';
+            foreach ( $attributes as $attribute_name => $options ) {
+                $attr_key = 'attribute_' . sanitize_title( $attribute_name );
+                echo '<tr><td class="value"><select name="' . esc_attr( $attr_key ) . '">';
+                echo '<option value="">' . esc_html__( 'Choose an option', 'woocommerce' ) . '</option>';
+                foreach ( $options as $option ) {
+                    echo '<option value="' . esc_attr( $option ) . '">' . esc_html( $option ) . '</option>';
+                }
+                echo '</select></td></tr>';
+            }
+            echo '</tbody></table>';
+            echo '<div class="single_variation_wrap">';
+            echo '<div class="woocommerce-variation single_variation"></div>';
+            echo '<div class="woocommerce-variation-add-to-cart variations_button"></div>';
+            echo '</div>';
+            echo '</form>';
         } elseif ( $is_purchasable || 'external' === $product_type ) {
             // Grouped / external: link to product page.
             printf(

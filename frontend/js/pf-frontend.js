@@ -348,6 +348,10 @@
             var self = this;
             this.$loadingScreen.hide();
 
+            console.log('[Product Finder] showResults – styles:', (data.styles || []).length,
+                'scripts:', (data.scripts || []).length,
+                'listing_html length:', (data.listing_html || '').length);
+
             // If CrocoBlock listing HTML was returned and has real content, use it
             var listingHtml = (data.listing_html || '').trim();
             if (listingHtml.length > 0) {
@@ -356,6 +360,13 @@
 
                 // 2. Inject the listing HTML so DOM elements exist
                 this.$resultsScreen.find('.pf-results-container').html(listingHtml);
+
+                console.log('[Product Finder] HTML injected. Variation forms:',
+                    this.$resultsScreen.find('.variations_form').length,
+                    'Swatch wrappers:',
+                    this.$resultsScreen.find('.fif-vse-swatches').length,
+                    'Elementor widgets:',
+                    this.$resultsScreen.find('.elementor-widget').length);
 
                 // 3. Load any JS enqueued during rendering, then re-init widgets
                 this.loadScripts(data.scripts || [], function () {
@@ -374,11 +385,27 @@
          * during CrocoBlock listing rendering (e.g. swatch plugin CSS).
          */
         loadStyles: function (urls) {
+            console.log('[Product Finder] loadStyles:', urls.length, 'URL(s)', urls);
             for (var i = 0; i < urls.length; i++) {
+                // Check if this stylesheet is already loaded.
+                var alreadyLoaded = false;
+                var links = document.getElementsByTagName('link');
+                var base = urls[i].split('?')[0];
+                for (var k = 0; k < links.length; k++) {
+                    if (links[k].href && links[k].href.split('?')[0].indexOf(base.replace(/^https?:/, '')) !== -1) {
+                        alreadyLoaded = true;
+                        break;
+                    }
+                }
+                if (alreadyLoaded) {
+                    console.log('[Product Finder] CSS already loaded, skipping:', urls[i]);
+                    continue;
+                }
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = urls[i];
                 document.head.appendChild(link);
+                console.log('[Product Finder] Loaded CSS:', urls[i]);
             }
         },
 
@@ -387,6 +414,8 @@
          * then invoke the callback once all scripts have loaded.
          */
         loadScripts: function (urls, callback) {
+            console.log('[Product Finder] loadScripts:', urls.length, 'URL(s)', urls);
+
             // Filter out scripts already present on the page.
             var toLoad = [];
             var existingSrcs = [];
@@ -400,8 +429,12 @@
                 var base = urls[i].split('?')[0];
                 if (existingSrcs.indexOf(base) === -1) {
                     toLoad.push(urls[i]);
+                } else {
+                    console.log('[Product Finder] Script already on page, skipping:', urls[i]);
                 }
             }
+
+            console.log('[Product Finder] Scripts to load (after dedup):', toLoad.length);
 
             if (!toLoad.length) {
                 callback();
@@ -413,6 +446,8 @@
                 var s = document.createElement('script');
                 s.src = toLoad[j];
                 s.onload = s.onerror = function () {
+                    var ok = this.readyState ? /loaded|complete/.test(this.readyState) : true;
+                    console.log('[Product Finder] Script ' + (ok ? 'loaded' : 'FAILED') + ':', this.src);
                     if (++loaded >= toLoad.length) {
                         callback();
                     }
@@ -432,27 +467,89 @@
         initDynamicContent: function () {
             var $container = this.$resultsScreen.find('.pf-results-container');
 
-            // Initialize WooCommerce variation forms
+            console.log('[Product Finder] initDynamicContent – starting');
+
+            // 1. Add .product class to listing items that contain variation forms.
+            //    Swatch plugins (FiF VSE) use $wrap.closest('.product') to scope
+            //    their search for the correct variation form.
+            $container.find('.variations_form').each(function () {
+                $(this).closest(
+                    '.jet-listing-grid__item,' +
+                    '.jet-listing-grid__items > div,' +
+                    '.pf-result-item,' +
+                    '.elementor-widget-wrap,' +
+                    '.e-con-inner,' +
+                    '.e-con'
+                ).addClass('product');
+            });
+
+            // 2. Initialize WooCommerce variation forms (must happen before
+            //    swatch initialization so WC events are ready).
+            var formsInited = 0;
             if ($.fn.wc_variation_form) {
                 $container.find('.variations_form').each(function () {
+                    formsInited++;
                     $(this).wc_variation_form().trigger('check_variations');
                 });
             }
+            console.log('[Product Finder] WC variation forms initialized:', formsInited);
 
-            // Re-initialize Elementor widgets (swatch widgets, etc.)
+            // 3. Ensure Elementor widget hooks are registered.
+            //    When a swatch plugin's JS is loaded dynamically (after
+            //    elementor/frontend/init already fired), its hook registration
+            //    code inside $(window).on('elementor/frontend/init') hasn't
+            //    executed.  Re-triggering causes plugins to register their
+            //    element_ready handlers.
+            if (window.elementorFrontend) {
+                $(window).trigger('elementor/frontend/init');
+            }
+
+            // 4. Trigger Elementor's element_ready for all widgets in the
+            //    container.  This calls registered handlers (e.g. initWrap
+            //    in FiF VSE) which initialise the swatch UI.
+            //    New DOM elements don't have the fifVseInit flag so initWrap
+            //    will run on them; already-initialised elements are skipped.
+            var widgetsTriggered = 0;
             if (window.elementorFrontend && elementorFrontend.elementsHandler) {
                 if (typeof elementorFrontend.elementsHandler.runReadyTrigger === 'function') {
                     $container.find('.elementor-widget').each(function () {
-                        elementorFrontend.elementsHandler.runReadyTrigger($(this));
+                        widgetsTriggered++;
+                        try {
+                            elementorFrontend.elementsHandler.runReadyTrigger($(this));
+                        } catch (e) {
+                            console.warn('[Product Finder] runReadyTrigger error:', e);
+                        }
                     });
                 }
             }
+            console.log('[Product Finder] Elementor widgets triggered:', widgetsTriggered);
 
-            // Trigger generic post-load event (many WP plugins listen for this)
+            // 5. Fallback: directly fire element_ready hooks by widget type.
+            //    Handles cases where runReadyTrigger is unavailable or the
+            //    Elementor version uses a different internal API.
+            if (window.elementorFrontend && elementorFrontend.hooks) {
+                $container.find('[data-widget_type]').each(function () {
+                    var widgetType = $(this).data('widget_type');
+                    if (widgetType) {
+                        try {
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/' + widgetType, $(this)
+                            );
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/global', $(this)
+                            );
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            // 6. Trigger generic post-load event (many WP plugins listen for this)
             $(document.body).trigger('post-load');
 
             // WooCommerce cart fragments refresh
             $(document.body).trigger('wc_fragment_refresh');
+
+            console.log('[Product Finder] initDynamicContent – complete');
         },
 
         renderFallbackResults: function (data) {

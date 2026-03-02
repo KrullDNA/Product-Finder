@@ -19,20 +19,32 @@
 
         var $target = $(e.target);
 
+        console.log('[PF ATC] found_variation fired, variation_id:', variation.variation_id,
+            'target:', $target.get(0));
+
         // Walk up to the listing item container.
         var $item = $target.closest(
             '.jet-listing-grid__item,' +
             '.elementor-widget-wrap,' +
             '.e-con-inner,' +
             '.e-con,' +
+            '.product,' +
             '.jet-listing-grid__items > div'
         );
-        if (!$item.length) return;
+        if (!$item.length) {
+            console.log('[PF ATC] No listing item container found for found_variation');
+            return;
+        }
 
         var $btn = $item.find('.pf-atc-btn[data-pf-variable]');
-        if (!$btn.length) return;
+        if (!$btn.length) {
+            console.log('[PF ATC] No pf-atc-btn found in listing item');
+            return;
+        }
 
         // Enable the button.
+        console.log('[PF ATC] Enabling button for product:', $btn.data('product_id'),
+            'variation:', variation.variation_id);
         $btn
             .removeClass('pf-atc-btn--disabled')
             .addClass('add_to_cart_button ajax_add_to_cart');
@@ -65,6 +77,7 @@
             '.elementor-widget-wrap,' +
             '.e-con-inner,' +
             '.e-con,' +
+            '.product,' +
             '.jet-listing-grid__items > div'
         );
         if (!$item.length) return;
