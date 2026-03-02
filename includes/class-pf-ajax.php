@@ -264,6 +264,13 @@ class PF_Ajax {
         $this->_debug[] = 'WC ready: cart=' . ( is_null( WC()->cart ) ? 'NULL' : 'OK' )
             . ', session=' . ( is_null( WC()->session ) ? 'NULL' : 'OK' );
 
+        // Force third-party plugins to register their asset handles.
+        // During AJAX, wp_enqueue_scripts doesn't fire, so handles
+        // used by get_script_depends() / get_style_depends() are
+        // unavailable.  Firing the hook here makes them available so
+        // enqueue_widget_dependencies() can find and enqueue them.
+        $this->force_register_plugin_assets();
+
         // Snapshot currently queued assets before rendering so we can
         // detect CSS/JS enqueued by widgets (e.g. swatch plugins) that
         // the browser hasn't loaded yet.
@@ -300,7 +307,30 @@ class PF_Ajax {
         $this->_new_scripts = $this->collect_asset_urls( wp_scripts(), array_diff( wp_scripts()->queue, $scripts_before ) );
 
         if ( ! empty( $this->_new_styles ) || ! empty( $this->_new_scripts ) ) {
-            $this->_debug[] = 'Dynamic assets: ' . count( $this->_new_styles ) . ' style(s), '
+            $this->_debug[] = 'Dynamic assets (from registry): ' . count( $this->_new_styles ) . ' style(s), '
+                . count( $this->_new_scripts ) . ' script(s)';
+        }
+
+        // Discover third-party plugin assets directly from the
+        // filesystem when the registry-based approach above fails
+        // to capture them (e.g. plugin doesn't register handles
+        // during AJAX at all).
+        $fs_assets = $this->discover_swatch_plugin_assets( $html );
+        if ( ! empty( $fs_assets['styles'] ) || ! empty( $fs_assets['scripts'] ) ) {
+            // Merge, deduplicating by base URL (strip query strings).
+            $existing_bases = array_map( function ( $u ) { return strtok( $u, '?' ); }, $this->_new_styles );
+            foreach ( $fs_assets['styles'] as $url ) {
+                if ( ! in_array( strtok( $url, '?' ), $existing_bases, true ) ) {
+                    $this->_new_styles[] = $url;
+                }
+            }
+            $existing_bases = array_map( function ( $u ) { return strtok( $u, '?' ); }, $this->_new_scripts );
+            foreach ( $fs_assets['scripts'] as $url ) {
+                if ( ! in_array( strtok( $url, '?' ), $existing_bases, true ) ) {
+                    $this->_new_scripts[] = $url;
+                }
+            }
+            $this->_debug[] = 'Dynamic assets (after filesystem scan): ' . count( $this->_new_styles ) . ' style(s), '
                 . count( $this->_new_scripts ) . ' script(s)';
         }
 
@@ -631,6 +661,220 @@ class PF_Ajax {
 
         if ( ! empty( $enqueued ) ) {
             $this->_debug[] = 'Known widget assets enqueued: ' . implode( ', ', $enqueued );
+        }
+    }
+
+    /**
+     * Force third-party plugins to register their script/style handles.
+     *
+     * During normal page rendering wp_enqueue_scripts fires and plugins
+     * call wp_register_script / wp_register_style to make their handles
+     * available.  During AJAX this hook doesn't fire, so the handles
+     * returned by Elementor widget get_script_depends / get_style_depends
+     * are missing from the WordPress registry.
+     *
+     * This method fires the relevant hooks so that plugins register
+     * their handles, enabling enqueue_widget_dependencies() to work.
+     */
+    private function force_register_plugin_assets() {
+        $scripts_before = count( wp_scripts()->registered );
+        $styles_before  = count( wp_styles()->registered );
+
+        // 1. Fire wp_enqueue_scripts if it hasn't fired yet.
+        //    Buffer any stray output to prevent header / content leakage.
+        if ( ! did_action( 'wp_enqueue_scripts' ) ) {
+            ob_start();
+            try {
+                do_action( 'wp_enqueue_scripts' );
+            } catch ( \Throwable $e ) {
+                $this->_debug[] = 'force_register: wp_enqueue_scripts error: ' . $e->getMessage();
+            }
+            ob_end_clean();
+        }
+
+        // 2. Fire Elementor's frontend registration hooks.
+        //    Some widgets register assets on these hooks rather than
+        //    on wp_enqueue_scripts.
+        if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance ) {
+            $frontend = \Elementor\Plugin::$instance->frontend;
+            if ( $frontend ) {
+                foreach ( array( 'register_scripts', 'register_styles' ) as $method ) {
+                    if ( method_exists( $frontend, $method ) ) {
+                        try {
+                            $frontend->$method();
+                        } catch ( \Throwable $e ) {
+                            // Ignore – some Elementor versions may not support these during AJAX.
+                        }
+                    }
+                }
+            }
+        }
+
+        $scripts_after = count( wp_scripts()->registered );
+        $styles_after  = count( wp_styles()->registered );
+        $this->_debug[] = 'force_register_plugin_assets: scripts registered '
+            . $scripts_before . ' → ' . $scripts_after
+            . ', styles registered ' . $styles_before . ' → ' . $styles_after;
+    }
+
+    /**
+     * Discover CSS/JS files for the swatch plugin directly from the
+     * filesystem.
+     *
+     * This is a robust fallback for when the plugin doesn't register
+     * its asset handles in the WordPress script/style system during
+     * AJAX requests.  We find the plugin's directory on disk, scan for
+     * frontend CSS/JS files, and return their URLs so the client can
+     * load them.
+     *
+     * @param string $html  Rendered listing HTML.
+     * @return array { styles: string[], scripts: string[] }
+     */
+    private function discover_swatch_plugin_assets( $html ) {
+        $result = array( 'styles' => array(), 'scripts' => array() );
+
+        // Only scan when swatch markup is present in the rendered HTML.
+        if ( strpos( $html, 'fif-vse-swatches' ) === false ) {
+            return $result;
+        }
+
+        $plugin_dir = '';
+
+        // Strategy 1: Use PHP reflection on the Elementor widget class.
+        // This is the most reliable – we KNOW this widget exists because
+        // its markup is in the HTML.
+        if ( class_exists( '\Elementor\Plugin' ) && \Elementor\Plugin::$instance
+            && isset( \Elementor\Plugin::$instance->widgets_manager ) ) {
+            $widget = \Elementor\Plugin::$instance->widgets_manager
+                ->get_widget_types( 'fif_vse_variation_swatches' );
+            if ( $widget ) {
+                try {
+                    $ref  = new \ReflectionClass( $widget );
+                    $file = $ref->getFileName();
+                    if ( $file && defined( 'WP_PLUGIN_DIR' ) && strpos( $file, WP_PLUGIN_DIR ) === 0 ) {
+                        $relative    = substr( $file, strlen( WP_PLUGIN_DIR ) + 1 );
+                        $plugin_slug = explode( '/', $relative )[0];
+                        $candidate   = WP_PLUGIN_DIR . '/' . $plugin_slug;
+                        if ( is_dir( $candidate ) ) {
+                            $plugin_dir = $candidate;
+                            $this->_debug[] = 'discover_swatch: found via reflection: ' . $plugin_slug;
+                        }
+                    }
+                } catch ( \Throwable $e ) {
+                    $this->_debug[] = 'discover_swatch: reflection error: ' . $e->getMessage();
+                }
+            }
+        }
+
+        // Strategy 2: Search the active plugins list for FiF VSE.
+        if ( ! $plugin_dir ) {
+            $active = get_option( 'active_plugins', array() );
+            foreach ( $active as $pf ) {
+                $slug = dirname( $pf );
+                if ( '.' === $slug || empty( $slug ) ) {
+                    continue;
+                }
+                if ( stripos( $slug, 'fif' ) !== false
+                    || stripos( $slug, 'vse' ) !== false
+                    || stripos( $slug, 'variation-swatches' ) !== false
+                    || stripos( $slug, 'variation_swatches' ) !== false
+                ) {
+                    $candidate = WP_PLUGIN_DIR . '/' . $slug;
+                    if ( is_dir( $candidate ) ) {
+                        $plugin_dir = $candidate;
+                        $this->_debug[] = 'discover_swatch: found via active_plugins: ' . $slug;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Strategy 3: Glob WP_PLUGIN_DIR for matching directory names.
+        if ( ! $plugin_dir && defined( 'WP_PLUGIN_DIR' ) ) {
+            foreach ( array( '*fif*vse*', '*vse*swatches*', '*variation*swatches*elementor*' ) as $pattern ) {
+                $dirs = glob( WP_PLUGIN_DIR . '/' . $pattern, GLOB_ONLYDIR );
+                if ( ! empty( $dirs ) ) {
+                    $plugin_dir = $dirs[0];
+                    $this->_debug[] = 'discover_swatch: found via glob: ' . basename( $plugin_dir );
+                    break;
+                }
+            }
+        }
+
+        if ( ! $plugin_dir || ! is_dir( $plugin_dir ) ) {
+            $this->_debug[] = 'discover_swatch: plugin directory NOT found';
+            return $result;
+        }
+
+        // Scan the plugin directory for frontend CSS/JS files.
+        $this->scan_plugin_frontend_assets( $plugin_dir, $result );
+
+        $this->_debug[] = 'discover_swatch: found '
+            . count( $result['styles'] ) . ' CSS, '
+            . count( $result['scripts'] ) . ' JS file(s)';
+
+        return $result;
+    }
+
+    /**
+     * Recursively scan a plugin directory for frontend CSS/JS files.
+     *
+     * Skips admin-only files, node_modules, vendor directories, and
+     * source maps.  Converts filesystem paths to public URLs.
+     *
+     * @param string $dir     Absolute path to the plugin directory.
+     * @param array  &$result { styles: string[], scripts: string[] }
+     */
+    private function scan_plugin_frontend_assets( $dir, &$result ) {
+        if ( ! is_dir( $dir ) ) {
+            return;
+        }
+
+        $plugins_url_base = plugins_url();
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator( $dir, \RecursiveDirectoryIterator::SKIP_DOTS ),
+                \RecursiveIteratorIterator::LEAVES_ONLY
+            );
+        } catch ( \Throwable $e ) {
+            return;
+        }
+
+        foreach ( $iterator as $file ) {
+            $path = $file->getPathname();
+            $ext  = strtolower( pathinfo( $path, PATHINFO_EXTENSION ) );
+
+            if ( 'css' !== $ext && 'js' !== $ext ) {
+                continue;
+            }
+
+            // Build path relative to WP_PLUGIN_DIR.
+            $relative = substr( $path, strlen( WP_PLUGIN_DIR ) );
+
+            // Skip admin, node_modules, vendor directories.
+            if ( preg_match( '#[/\\\\](admin|node_modules|vendor|build|src)[/\\\\]#i', $relative ) ) {
+                continue;
+            }
+
+            // Skip source maps.
+            if ( preg_match( '/\.map$/i', $relative ) ) {
+                continue;
+            }
+
+            // Skip files with "admin" in the filename.
+            $basename = pathinfo( $path, PATHINFO_FILENAME );
+            if ( stripos( $basename, 'admin' ) !== false ) {
+                continue;
+            }
+
+            $url = $plugins_url_base . $relative;
+
+            if ( 'css' === $ext ) {
+                $result['styles'][] = $url;
+            } else {
+                $result['scripts'][] = $url;
+            }
         }
     }
 

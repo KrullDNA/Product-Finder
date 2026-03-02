@@ -555,22 +555,28 @@
             }
 
             // 7. Direct swatch widget initialization fallback.
-            //    If the swatch plugin's JS was just loaded dynamically,
-            //    its Elementor hooks might not be registered yet.
-            //    Find swatch wrappers and try to initialize them directly.
+            //    If the swatch plugin's JS was loaded dynamically, its
+            //    $(document).ready() should have already initialised swatches
+            //    (jQuery fires ready callbacks immediately when the document
+            //    is already ready).  Check for fifVseInit and only act on
+            //    un-initialised wrappers.
             var $swatchWraps = $container.find('.fif-vse-swatches');
             if ($swatchWraps.length) {
                 console.log('[Product Finder] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
                 $swatchWraps.each(function () {
                     var $wrap = $(this);
-                    $wrap.removeData('fifVseInit');
 
-                    // Try firing the swatch widget's specific Elementor hook
+                    // Already initialised – skip to avoid double-init.
+                    if ($wrap.data('fifVseInit')) {
+                        console.log('[Product Finder] Swatch already initialised, skipping');
+                        return;
+                    }
+
+                    // Try firing the swatch widget's specific Elementor hook.
                     var $widget = $wrap.closest('.elementor-widget');
                     if ($widget.length && window.elementorFrontend && elementorFrontend.hooks) {
                         console.log('[Product Finder] Firing swatch hook on widget',
-                            'widget_type:', $widget.attr('data-widget_type'),
-                            'element:', $widget.get(0));
+                            'widget_type:', $widget.attr('data-widget_type'));
                         try {
                             elementorFrontend.hooks.doAction(
                                 'frontend/element_ready/fif_vse_variation_swatches.default',
