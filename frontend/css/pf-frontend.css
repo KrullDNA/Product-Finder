@@ -136,7 +136,7 @@
     position: relative;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .pf-answer-option--image:hover {
         border-color: var(--pf-accent);
         box-shadow: var(--pf-shadow);
@@ -234,7 +234,7 @@
     z-index: -1;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
     .pf-answer-option--text:hover::before {
         transform: translateX(0);
     }
