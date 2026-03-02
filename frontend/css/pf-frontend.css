@@ -195,11 +195,11 @@
 
 .pf-answer-option--text {
     background: var(--pf-card-bg);
-    border: 2px solid var(--pf-border);
+    border: 2px solid transparent;
     border-radius: var(--pf-radius-sm);
     padding: 16px 20px;
     cursor: pointer;
-    transition: border-color var(--pf-transition), box-shadow var(--pf-transition);
+    transition: border-color var(--pf-transition), box-shadow var(--pf-transition), background-color var(--pf-transition);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -227,9 +227,9 @@
     transform: translateX(0);
 }
 
-/* When mouse leaves, animate out to the right */
+/* When mouse leaves, animate out to the left */
 .pf-answer-option--text.pf-hover-out::before {
-    transform: translateX(100%);
+    transform: translateX(-100%);
 }
 
 /* Disable transition when resetting ::before position (prevents flash through translateX(0)) */
@@ -237,18 +237,9 @@
     transition: none !important;
 }
 
-.pf-answer-option--text:hover {
-    border-color: var(--pf-accent);
-}
-
 /* Selected state: keep the hover fill visible */
 .pf-answer-option--text.pf-selected::before {
     transform: translateX(0);
-}
-
-.pf-answer-option--text.pf-selected {
-    border-color: var(--pf-accent);
-    box-shadow: 0 0 0 3px rgba(74, 144, 217, 0.15);
 }
 
 .pf-answer-option--text .pf-answer-text {
@@ -340,7 +331,7 @@
     background: none;
     border: none;
     color: var(--pf-text-light);
-    text-decoration: underline;
+    text-decoration: none;
     padding: 8px 0;
     font-size: 14px;
 }
@@ -420,12 +411,12 @@
 
 .pf-loading-icon {
     color: var(--pf-accent);
-    animation: pfSpinCCW 1.2s linear infinite;
+    animation: pfSpinCW 1.2s linear infinite;
 }
 
-@keyframes pfSpinCCW {
+@keyframes pfSpinCW {
     from { transform: rotate(0deg); }
-    to   { transform: rotate(-360deg); }
+    to   { transform: rotate(360deg); }
 }
 
 .pf-loading-text {
@@ -436,12 +427,12 @@
 
 /* Custom SVG / icon library loading icon */
 img.pf-loading-icon {
-    animation: pfSpinCCW 1.2s linear infinite;
+    animation: pfSpinCW 1.2s linear infinite;
 }
 
 i.pf-loading-icon {
     font-size: 60px;
-    animation: pfSpinCCW 1.2s linear infinite;
+    animation: pfSpinCW 1.2s linear infinite;
 }
 
 /* === Results Screen === */

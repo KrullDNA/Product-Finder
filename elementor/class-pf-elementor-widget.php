@@ -70,6 +70,15 @@ class PF_Elementor_Widget extends Widget_Base {
             'default' => '',
         ) );
 
+        $this->add_control( 'loading_heading_text', array(
+            'label'       => __( 'Loading Screen Heading', 'product-finder' ),
+            'type'        => Controls_Manager::TEXT,
+            'default'     => '',
+            'placeholder' => __( 'Finding your perfect products…', 'product-finder' ),
+            'label_block' => true,
+            'separator'   => 'before',
+        ) );
+
         $this->add_control( 'loading_svg_icon', array(
             'label'       => __( 'Loading Screen SVG Icon', 'product-finder' ),
             'type'        => Controls_Manager::ICONS,
@@ -78,6 +87,14 @@ class PF_Elementor_Widget extends Widget_Base {
                 'library' => '',
             ),
             'description' => __( 'Choose a custom SVG icon to replace the default loading spinner. Upload your own SVG or pick from the icon library.', 'product-finder' ),
+        ) );
+
+        $this->add_control( 'results_heading_text', array(
+            'label'       => __( 'Results Screen Heading', 'product-finder' ),
+            'type'        => Controls_Manager::TEXT,
+            'default'     => '',
+            'placeholder' => __( 'Your Recommended Products', 'product-finder' ),
+            'label_block' => true,
             'separator'   => 'before',
         ) );
 
@@ -622,6 +639,16 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
+        $this->add_responsive_control( 'checkbox_border_width', array(
+            'label'      => __( 'Border Width', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 6 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-checkbox' => 'border-width: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
         $this->add_control( 'checkbox_border_color', array(
             'label'     => __( 'Border Color', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
@@ -810,6 +837,16 @@ class PF_Elementor_Widget extends Widget_Base {
             'separator' => 'before',
         ) );
 
+        $this->add_responsive_control( 'btn_skip_spacing_top', array(
+            'label'      => __( 'Spacing Above', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 60 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-skip-email' => 'margin-top: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
         $this->add_control( 'btn_skip_bg', array(
             'label'     => __( 'Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
@@ -822,7 +859,7 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'     => __( 'Text Color', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .pf-skip-email' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .pf-skip-email' => 'color: {{VALUE}}; text-decoration: none;',
             ),
         ) );
 
@@ -1050,6 +1087,13 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
+        // Heading
+        $this->add_control( 'loading_text_heading', array(
+            'label'     => __( 'Heading', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
         $this->add_control( 'loading_text_color', array(
             'label'     => __( 'Text Color', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
@@ -1061,6 +1105,28 @@ class PF_Elementor_Widget extends Widget_Base {
         $this->add_group_control( Group_Control_Typography::get_type(), array(
             'name'     => 'loading_text_typography',
             'selector' => '{{WRAPPER}} .pf-loading-text',
+        ) );
+
+        $this->add_responsive_control( 'loading_text_align', array(
+            'label'     => __( 'Alignment', 'product-finder' ),
+            'type'      => Controls_Manager::CHOOSE,
+            'options'   => array(
+                'left'   => array( 'title' => __( 'Left', 'product-finder' ), 'icon' => 'eicon-text-align-left' ),
+                'center' => array( 'title' => __( 'Center', 'product-finder' ), 'icon' => 'eicon-text-align-center' ),
+                'right'  => array( 'title' => __( 'Right', 'product-finder' ), 'icon' => 'eicon-text-align-right' ),
+            ),
+            'selectors' => array(
+                '{{WRAPPER}} .pf-loading-text' => 'text-align: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'loading_text_margin', array(
+            'label'      => __( 'Margin', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-loading-text' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
         ) );
 
         $this->end_controls_section();
@@ -1124,6 +1190,8 @@ class PF_Elementor_Widget extends Widget_Base {
             'range'      => array( 'px' => array( 'min' => 0, 'max' => 60 ) ),
             'selectors'  => array(
                 '{{WRAPPER}} .pf-results-grid' => 'gap: {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .pf-results-container .jet-listing-grid__items' => 'gap: {{SIZE}}{{UNIT}} !important;',
+                '{{WRAPPER}} .pf-results-container .jet-listing-grid' => 'gap: {{SIZE}}{{UNIT}};',
             ),
         ) );
 
@@ -1275,8 +1343,21 @@ class PF_Elementor_Widget extends Widget_Base {
             return;
         }
 
+        // Build shortcode with optional custom heading overrides.
+        $shortcode_atts = 'id="' . $finder_id . '"';
+
+        $loading_heading = trim( $settings['loading_heading_text'] ?? '' );
+        if ( $loading_heading ) {
+            $shortcode_atts .= ' loading_heading="' . esc_attr( $loading_heading ) . '"';
+        }
+
+        $results_heading = trim( $settings['results_heading_text'] ?? '' );
+        if ( $results_heading ) {
+            $shortcode_atts .= ' results_heading="' . esc_attr( $results_heading ) . '"';
+        }
+
         // Render the shortcode
-        echo do_shortcode( '[product_finder id="' . $finder_id . '"]' );
+        echo do_shortcode( '[product_finder ' . $shortcode_atts . ']' );
 
         // If a custom SVG icon was chosen, inject it to replace the default loading icon
         $icon_settings = $settings['loading_svg_icon'] ?? array();

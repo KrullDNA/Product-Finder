@@ -44,8 +44,13 @@
             this.$emailScreen.find('.pf-email-input').attr('placeholder', i.email_placeholder);
             this.$emailScreen.find('.pf-send-email').text(i.send_results);
             this.$emailScreen.find('.pf-skip-email').text(i.skip_email);
-            this.$loadingScreen.find('.pf-loading-text').text(i.loading);
-            this.$resultsScreen.find('.pf-results-title').text(i.your_results);
+
+            // Custom heading overrides from Elementor widget data attributes
+            var customLoading = this.$el.data('loading-heading');
+            var customResults = this.$el.data('results-heading');
+
+            this.$loadingScreen.find('.pf-loading-text').text(customLoading || i.loading);
+            this.$resultsScreen.find('.pf-results-title').text(customResults || i.your_results);
             this.$resultsScreen.find('.pf-start-over').text(i.start_over);
         },
 

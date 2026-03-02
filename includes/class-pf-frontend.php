@@ -40,7 +40,9 @@ class PF_Frontend {
 
     public function render_shortcode( $atts ) {
         $atts = shortcode_atts( array(
-            'id' => 0,
+            'id'               => 0,
+            'loading_heading'  => '',
+            'results_heading'  => '',
         ), $atts, 'product_finder' );
 
         $finder_id = absint( $atts['id'] );
@@ -115,7 +117,14 @@ class PF_Frontend {
 
         ob_start();
         ?>
-        <div class="pf-finder" id="pf-finder-<?php echo esc_attr( $finder_id ); ?>" data-finder-id="<?php echo esc_attr( $finder_id ); ?>" data-questions="<?php echo esc_attr( wp_json_encode( $inline_data ) ); ?>" data-options="<?php echo esc_attr( wp_json_encode( $options ) ); ?>">
+        <div class="pf-finder" id="pf-finder-<?php echo esc_attr( $finder_id ); ?>" data-finder-id="<?php echo esc_attr( $finder_id ); ?>" data-questions="<?php echo esc_attr( wp_json_encode( $inline_data ) ); ?>" data-options="<?php echo esc_attr( wp_json_encode( $options ) ); ?>"<?php
+            if ( ! empty( $atts['loading_heading'] ) ) {
+                echo ' data-loading-heading="' . esc_attr( $atts['loading_heading'] ) . '"';
+            }
+            if ( ! empty( $atts['results_heading'] ) ) {
+                echo ' data-results-heading="' . esc_attr( $atts['results_heading'] ) . '"';
+            }
+        ?>>
 
             <!-- Progress bar -->
             <div class="pf-progress-bar-wrap">
