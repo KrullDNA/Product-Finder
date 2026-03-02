@@ -186,6 +186,16 @@
 
             this.$container.html(html);
 
+            // After auto-advance on touch devices the finger's last position can
+            // land on a new answer option, triggering a ghost hover highlight.
+            // Suppress pointer events briefly so the incoming answers stay clean.
+            if (this._suppressTouch) {
+                this._suppressTouch = false;
+                var $answers = this.$container.find('.pf-answer-option');
+                $answers.addClass('pf-no-pointer');
+                setTimeout(function () { $answers.removeClass('pf-no-pointer'); }, 400);
+            }
+
             // Animate in
             this.$container.find('.pf-question-slide').addClass('pf-slide-in');
         },
@@ -220,9 +230,14 @@
                 $opt.addClass('pf-selected');
                 this.answers[qi] = [ai];
 
-                // Auto-advance after a short delay
+                // Auto-advance after a short delay.
+                // Flag so renderQuestion knows to suppress pointer events on the
+                // incoming answers (prevents ghost hover on touch devices).
                 var self = this;
-                setTimeout(function () { self.goNext(); }, 350);
+                setTimeout(function () {
+                    self._suppressTouch = true;
+                    self.goNext();
+                }, 350);
             }
         },
 

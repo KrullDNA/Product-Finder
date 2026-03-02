@@ -32,6 +32,11 @@
     box-sizing: border-box;
 }
 
+/* Suppress pointer events briefly after auto-advance (prevents ghost hover on touch) */
+.pf-no-pointer {
+    pointer-events: none !important;
+}
+
 /* === Progress Bar === */
 
 .pf-progress-bar-wrap {
