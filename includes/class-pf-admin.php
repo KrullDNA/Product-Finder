@@ -263,7 +263,7 @@ class PF_Admin {
                     <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[image_id]" value="<?php echo esc_attr( $answer['image_id'] ); ?>" class="pf-image-id">
                     <div class="pf-image-preview" <?php echo $thumb_url ? '' : 'style="display:none;"'; ?>>
                         <img src="<?php echo esc_url( $thumb_url ); ?>" alt="">
-                        <button type="button" class="pf-remove-image button-link" title="<?php esc_attr_e( 'Remove Image', 'product-finder' ); ?>"><span class="dashicons dashicons-trash"></span></button>
+                        <button type="button" class="pf-remove-image button-link" title="<?php esc_attr_e( 'Remove Image', 'product-finder' ); ?>"><span class="dashicons dashicons-no-alt"></span> <?php esc_html_e( 'Remove', 'product-finder' ); ?></button>
                     </div>
                     <button type="button" class="button pf-select-image"><?php esc_html_e( 'Select Image', 'product-finder' ); ?></button>
                 </div>
