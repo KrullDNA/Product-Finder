@@ -377,8 +377,10 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
             $btn_classes[] = 'ajax_add_to_cart';
         } elseif ( $is_variable && $is_purchasable ) {
             // Variable product: starts disabled until swatch selection.
+            // Our own JS handles the AJAX add-to-cart for variable products
+            // (WC's wc-add-to-cart.js may not have its localized params in
+            // AJAX-loaded content).
             $btn_classes[] = 'pf-atc-btn--disabled';
-            $btn_classes[] = 'product_type_variable';
         }
 
         echo '<div class="pf-atc-wrap">';
