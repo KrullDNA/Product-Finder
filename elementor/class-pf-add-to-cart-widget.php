@@ -232,6 +232,66 @@ class PF_Add_To_Cart_Widget extends Widget_Base {
 
         $this->end_controls_section();
 
+        /* ── Style: Icon ── */
+
+        $this->start_controls_section( 'section_style_icon', array(
+            'label' => __( 'Icon', 'product-finder' ),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ) );
+
+        $this->add_responsive_control( 'icon_size', array(
+            'label'      => __( 'Size', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array(
+                'px' => array( 'min' => 6, 'max' => 60 ),
+                'em' => array( 'min' => 0.5, 'max' => 4, 'step' => 0.1 ),
+            ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-atc-btn-icon' => 'font-size: {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .pf-atc-btn-icon svg' => 'width: {{SIZE}}{{UNIT}}; height: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_control( 'icon_color', array(
+            'label'     => __( 'Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-atc-btn-icon' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .pf-atc-btn-icon svg' => 'fill: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'icon_gap', array(
+            'label'      => __( 'Spacing', 'product-finder' ),
+            'description'=> __( 'Gap between the label and the icon.', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array(
+                'px' => array( 'min' => 0, 'max' => 30 ),
+                'em' => array( 'min' => 0, 'max' => 2, 'step' => 0.1 ),
+            ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-atc-btn-icon' => 'margin-left: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'icon_baseline_shift', array(
+            'label'       => __( 'Baseline Shift', 'product-finder' ),
+            'description' => __( 'Move the icon up or down to align with the text.', 'product-finder' ),
+            'type'        => Controls_Manager::SLIDER,
+            'size_units'  => array( 'px', 'em' ),
+            'range'       => array(
+                'px' => array( 'min' => -20, 'max' => 20 ),
+                'em' => array( 'min' => -1, 'max' => 1, 'step' => 0.05 ),
+            ),
+            'selectors'   => array(
+                '{{WRAPPER}} .pf-atc-btn-icon' => 'position: relative; top: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->end_controls_section();
+
         /* ── Style: Quantity ── */
 
         $this->start_controls_section( 'section_style_quantity', array(
