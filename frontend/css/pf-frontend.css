@@ -243,7 +243,8 @@
 
 /* Selected state: keep the hover fill visible, no border */
 .pf-answer-option--text.pf-selected {
-    border-color: transparent;
+    border-color: transparent !important;
+    box-shadow: none !important;
 }
 
 .pf-answer-option--text.pf-selected::before {
