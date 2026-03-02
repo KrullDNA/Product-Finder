@@ -19,6 +19,10 @@ class PF_Ajax {
         // Frontend: compute results
         add_action( 'wp_ajax_pf_compute_results', array( $this, 'compute_results' ) );
         add_action( 'wp_ajax_nopriv_pf_compute_results', array( $this, 'compute_results' ) );
+
+        // Frontend: add variable product to cart
+        add_action( 'wp_ajax_pf_add_to_cart_variable', array( $this, 'add_to_cart_variable' ) );
+        add_action( 'wp_ajax_nopriv_pf_add_to_cart_variable', array( $this, 'add_to_cart_variable' ) );
     }
 
     /* ────────── Admin: search WooCommerce products ────────── */
@@ -242,6 +246,54 @@ class PF_Ajax {
             'scripts'     => $this->_new_scripts,
             'debug'       => $this->_debug,
         ) );
+    }
+
+    /* ────────── Frontend: add variable product to cart ────── */
+
+    public function add_to_cart_variable() {
+        check_ajax_referer( 'pf_frontend_nonce', 'nonce' );
+
+        $product_id   = absint( $_POST['product_id'] ?? 0 );
+        $variation_id = absint( $_POST['variation_id'] ?? 0 );
+        $quantity     = empty( $_POST['quantity'] ) ? 1 : wc_stock_amount( wp_unslash( $_POST['quantity'] ) );
+
+        if ( ! $product_id || ! $variation_id ) {
+            wp_send_json_error( array( 'message' => __( 'Missing product or variation ID.', 'product-finder' ) ) );
+        }
+
+        // Collect variation attributes from POST data.
+        $variations = array();
+        foreach ( $_POST as $key => $value ) {
+            if ( strpos( $key, 'attribute_' ) === 0 ) {
+                $variations[ sanitize_title( wp_unslash( $key ) ) ] = wp_unslash( $value );
+            }
+        }
+
+        // Ensure WooCommerce cart/session are loaded.
+        if ( function_exists( 'wc_load_cart' ) ) {
+            wc_load_cart();
+        }
+
+        $passed = apply_filters( 'woocommerce_add_to_cart_validation', true, $product_id, $quantity, $variation_id, $variations );
+
+        if ( $passed && false !== WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variations ) ) {
+            do_action( 'woocommerce_ajax_added_to_cart', $product_id );
+
+            // Return updated cart fragments so mini-cart refreshes.
+            if ( 'yes' === get_option( 'woocommerce_cart_redirect_after_add' ) ) {
+                wc_add_to_cart_message( array( $product_id => $quantity ), true );
+            }
+
+            \WC_AJAX::get_refreshed_fragments();
+        } else {
+            $notices = wc_get_notices( 'error' );
+            $message = ! empty( $notices )
+                ? wp_strip_all_tags( $notices[0]['notice'] ?? __( 'Unable to add to cart.', 'product-finder' ) )
+                : __( 'Unable to add to cart.', 'product-finder' );
+            wc_clear_notices();
+
+            wp_send_json_error( array( 'message' => $message ) );
+        }
     }
 
     /* ────────── CrocoBlock listing render ─────────────────── */

@@ -132,30 +132,41 @@
 
         $btn.removeClass('added').addClass('loading');
 
-        // Determine the WC AJAX URL.
-        var ajaxUrl;
-        if (typeof wc_add_to_cart_params !== 'undefined' && wc_add_to_cart_params.wc_ajax_url) {
-            ajaxUrl = wc_add_to_cart_params.wc_ajax_url.toString().replace('%%endpoint%%', 'add_to_cart');
-        } else {
-            // Fallback: build the URL from WP's admin-ajax or the page URL.
-            var baseUrl = (typeof pfFrontend !== 'undefined' && pfFrontend.ajax_url)
-                ? pfFrontend.ajax_url.replace('admin-ajax.php', '')
-                : '/';
-            ajaxUrl = baseUrl + '?wc-ajax=add_to_cart';
-        }
+        // Use our custom AJAX endpoint which properly handles variable
+        // products (WC's built-in ?wc-ajax=add_to_cart only supports
+        // simple products).
+        var ajaxUrl = (typeof pfAddToCart !== 'undefined' && pfAddToCart.ajax_url)
+            ? pfAddToCart.ajax_url
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.ajax_url)
+                ? pfFrontend.ajax_url
+                : '/wp-admin/admin-ajax.php';
+
+        var nonce = (typeof pfAddToCart !== 'undefined' && pfAddToCart.nonce)
+            ? pfAddToCart.nonce
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.nonce)
+                ? pfFrontend.nonce
+                : '';
+
+        postData.action = 'pf_add_to_cart_variable';
+        postData.nonce  = nonce;
 
         $.post(ajaxUrl, postData, function (response) {
             $btn.removeClass('loading');
 
-            if (response && (response.error || response.success === false)) {
+            if (!response || response.success === false) {
                 console.warn('[PF ATC] Add to cart failed:', response);
                 return;
             }
 
             $btn.addClass('added');
 
+            // The response is from WC_AJAX::get_refreshed_fragments()
+            // which returns fragments and cart_hash at the top level.
+            var fragments = response.fragments || (response.data && response.data.fragments);
+            var cartHash  = response.cart_hash || (response.data && response.data.cart_hash);
+
             // Update cart fragments (mini-cart, cart count, etc.).
-            $(document.body).trigger('added_to_cart', [response.fragments, response.cart_hash, $btn]);
+            $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
             $(document.body).trigger('wc_fragment_refresh');
 
             console.log('[PF ATC] Added to cart successfully, variation:', variationId);

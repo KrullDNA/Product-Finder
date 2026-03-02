@@ -36,6 +36,11 @@ class PF_Frontend {
             PF_VERSION,
             true
         );
+
+        wp_localize_script( 'pf-add-to-cart', 'pfAddToCart', array(
+            'ajax_url' => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'pf_frontend_nonce' ),
+        ) );
     }
 
     public function render_shortcode( $atts ) {
