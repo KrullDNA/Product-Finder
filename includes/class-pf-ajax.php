@@ -137,14 +137,20 @@ class PF_Ajax {
             wp_send_json_error();
         }
 
-        // Score products: lower rank = higher score (inverted)
-        $product_scores = array();
+        /* ── Intelligent scoring: collate ALL answers for comprehensive matching ── */
+
+        $product_scores    = array(); // pid => raw score
+        $product_questions = array(); // pid => array of question indices where product appeared
+        $product_answers   = array(); // pid => array of { qi, ai, question_text, answer_text }
+        $max_possible      = 0;       // theoretical maximum score if a product appeared rank-1 in every answer
+        $total_answered    = 0;       // number of questions actually answered
 
         foreach ( $answers as $qi => $selected_indices ) {
             if ( ! isset( $questions[ $qi ] ) ) {
                 continue;
             }
             $q = $questions[ $qi ];
+            $total_answered++;
 
             foreach ( (array) $selected_indices as $ai ) {
                 $ai = absint( $ai );
@@ -157,7 +163,7 @@ class PF_Ajax {
                     continue;
                 }
 
-                // Find the maximum rank in this answer for inversion
+                // Find the maximum rank in this answer for inversion.
                 $max_rank = 1;
                 foreach ( $a['products'] as $p ) {
                     if ( (int) $p['rank'] > $max_rank ) {
@@ -165,27 +171,63 @@ class PF_Ajax {
                     }
                 }
 
+                // Best possible score for this answer = max_rank (rank-1 inverted).
+                $max_possible += $max_rank;
+
                 foreach ( $a['products'] as $p ) {
                     $pid  = absint( $p['id'] );
                     $rank = absint( $p['rank'] );
                     if ( ! $pid ) {
                         continue;
                     }
-                    // Score = max_rank + 1 - rank (so rank 1 gets highest score)
+
                     $score = $max_rank + 1 - $rank;
+
                     if ( ! isset( $product_scores[ $pid ] ) ) {
-                        $product_scores[ $pid ] = 0;
+                        $product_scores[ $pid ]    = 0;
+                        $product_questions[ $pid ] = array();
+                        $product_answers[ $pid ]   = array();
                     }
                     $product_scores[ $pid ] += $score;
+
+                    // Track which questions this product matched.
+                    if ( ! in_array( (int) $qi, $product_questions[ $pid ], true ) ) {
+                        $product_questions[ $pid ][] = (int) $qi;
+                    }
+
+                    // Record the answer context for the recommendation summary.
+                    $product_answers[ $pid ][] = array(
+                        'qi'            => (int) $qi,
+                        'ai'            => $ai,
+                        'question_text' => $q['text'],
+                        'answer_text'   => $a['text'],
+                    );
                 }
             }
         }
 
-        // Sort by score descending
-        arsort( $product_scores );
+        /*
+         * Composite score: reward products that match MORE of the user's
+         * answered questions (breadth) on top of raw relevance (depth).
+         *
+         * final_score = raw_score × ( 1 + coverage_bonus )
+         * coverage_bonus = questions_matched / total_answered   (0 → 1)
+         *
+         * This means a product that appears across 5/5 questions will rank
+         * above one that scores high on only 1 question.
+         */
+        $composite_scores = array();
+        foreach ( $product_scores as $pid => $raw ) {
+            $coverage = $total_answered > 0
+                ? count( $product_questions[ $pid ] ) / $total_answered
+                : 0;
+            $composite_scores[ $pid ] = $raw * ( 1 + $coverage );
+        }
 
-        // Limit results
-        $top_ids = array_slice( array_keys( $product_scores ), 0, (int) $options['num_results'] );
+        arsort( $composite_scores );
+
+        // Limit results.
+        $top_ids = array_slice( array_keys( $composite_scores ), 0, (int) $options['num_results'] );
 
         // Debug log
         $this->_debug = array();
@@ -209,13 +251,37 @@ class PF_Ajax {
             if ( ! $product ) {
                 continue;
             }
+
+            // Match percentage: how close this product's raw score is to the
+            // theoretical maximum (rank-1 on every selected answer).
+            $match_pct = $max_possible > 0
+                ? min( 100, round( ( $product_scores[ $pid ] / $max_possible ) * 100 ) )
+                : 0;
+
+            // Deduplicate answer reasons per question (keep one reason per question).
+            $reasons = array();
+            $seen_q  = array();
+            if ( ! empty( $product_answers[ $pid ] ) ) {
+                foreach ( $product_answers[ $pid ] as $r ) {
+                    if ( in_array( $r['qi'], $seen_q, true ) ) {
+                        continue;
+                    }
+                    $seen_q[]  = $r['qi'];
+                    $reasons[] = $r['answer_text'];
+                }
+            }
+
             $products_data[] = array(
-                'id'        => $pid,
-                'name'      => $product->get_name(),
-                'price'     => $product->get_price_html(),
-                'image'     => wp_get_attachment_image_url( $product->get_image_id(), 'medium' ),
-                'permalink' => $product->get_permalink(),
-                'score'     => $product_scores[ $pid ],
+                'id'                => $pid,
+                'name'              => $product->get_name(),
+                'price'             => $product->get_price_html(),
+                'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'medium' ),
+                'permalink'         => $product->get_permalink(),
+                'score'             => $product_scores[ $pid ],
+                'match_pct'         => $match_pct,
+                'questions_matched' => count( $product_questions[ $pid ] ?? array() ),
+                'total_questions'   => $total_answered,
+                'reasons'           => $reasons,
             );
         }
 

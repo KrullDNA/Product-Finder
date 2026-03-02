@@ -626,12 +626,28 @@
             for (var i = 0; i < products.length; i++) {
                 var p = products[i];
                 html += '<div class="pf-result-card">';
+
+                // Match badge
+                if (p.match_pct) {
+                    html += '<span class="pf-match-badge">' + p.match_pct + '% match</span>';
+                }
+
                 if (p.image) {
                     html += '<a href="' + this.escHtml(p.permalink) + '" class="pf-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
                 }
                 html += '<div class="pf-result-info">';
                 html += '<h4 class="pf-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
                 html += '<div class="pf-result-price">' + p.price + '</div>';
+
+                // Recommendation reasons based on user answers
+                if (p.reasons && p.reasons.length) {
+                    html += '<ul class="pf-match-reasons">';
+                    for (var r = 0; r < p.reasons.length; r++) {
+                        html += '<li>' + this.escHtml(p.reasons[r]) + '</li>';
+                    }
+                    html += '</ul>';
+                }
+
                 html += '</div>';
                 html += '</div>';
             }
