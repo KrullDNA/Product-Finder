@@ -76,6 +76,11 @@
     animation: pfSlideIn 0.35s ease forwards;
 }
 
+/* Fade-out applied before replacing with the next question */
+.pf-question-slide.pf-slide-out {
+    animation: pfSlideOut 0.25s ease forwards;
+}
+
 @keyframes pfSlideIn {
     from {
         opacity: 0;
@@ -84,6 +89,17 @@
     to {
         opacity: 1;
         transform: translateX(0);
+    }
+}
+
+@keyframes pfSlideOut {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-20px);
     }
 }
 

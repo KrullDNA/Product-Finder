@@ -88,11 +88,11 @@
             }
 
             this.$el.on('click', '.pf-btn-continue', function () {
-                self.goNext();
+                self.transitionOut(function () { self.goNext(); });
             });
 
             this.$el.on('click', '.pf-btn-back', function () {
-                self.goBack();
+                self.transitionOut(function () { self.goBack(); });
             });
 
             this.$el.on('click', '.pf-skip-email', function () {
@@ -235,14 +235,19 @@
                 $opt.addClass('pf-selected');
                 this.answers[qi] = [ai];
 
-                // Auto-advance after a short delay.
-                // Flag so renderQuestion knows to suppress pointer events on the
-                // incoming answers (prevents ghost hover on touch devices).
+                // Fade the current question out, then render the next one.
+                // The fade-out gap ensures no element sits under the finger
+                // when the new answers appear (prevents ghost hover on touch).
                 var self = this;
+                var $slide = this.$container.find('.pf-question-slide');
                 setTimeout(function () {
-                    self._suppressTouch = true;
-                    self.goNext();
-                }, 350);
+                    $slide.addClass('pf-slide-out');
+                    // Wait for the fade-out animation (250ms) before rendering
+                    setTimeout(function () {
+                        self._suppressTouch = true;
+                        self.goNext();
+                    }, 280);
+                }, 200);
             }
         },
 
@@ -252,7 +257,19 @@
 
         /* ───────── Navigation ───────── */
 
+        /**
+         * Fade out the current slide, then call a callback to render the next view.
+         * If no slide is visible (e.g. first render) the callback fires immediately.
+         */
+        transitionOut: function (cb) {
+            var $slide = this.$container.find('.pf-question-slide');
+            if (!$slide.length) { cb(); return; }
+            $slide.addClass('pf-slide-out');
+            setTimeout(cb, 280); // slightly longer than the 250ms animation
+        },
+
         goNext: function () {
+            var self = this;
             if (this.current < this.totalQ - 1) {
                 this.current++;
                 this.renderQuestion(this.current);
@@ -264,6 +281,7 @@
         },
 
         goBack: function () {
+            var self = this;
             if (this.current > 0) {
                 this.current--;
                 this.renderQuestion(this.current);
