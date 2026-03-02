@@ -118,6 +118,15 @@
             var q = this.questions[idx];
             if (!q) return;
 
+            // When auto-advancing from a single-select tap, suppress pointer
+            // events on the incoming answers so the browser cannot apply a
+            // ghost hover / active state to whatever element lands under the
+            // finger.  The class is baked into the HTML *before* DOM insertion
+            // so there is zero window for the browser to match :hover.
+            var suppress = this._suppressTouch;
+            this._suppressTouch = false;
+            var noPtr = suppress ? ' pf-no-pointer' : '';
+
             var hasImages = q.answers.some(function (a) { return !!a.image; });
             var html = '<div class="pf-question-slide" data-qi="' + idx + '">';
 
@@ -131,7 +140,7 @@
                 for (var i = 0; i < q.answers.length; i++) {
                     var a = q.answers[i];
                     var selected = this.isSelected(idx, i) ? ' pf-selected' : '';
-                    html += '<div class="pf-answer-option pf-answer-option--image' + selected + '" data-ai="' + i + '">';
+                    html += '<div class="pf-answer-option pf-answer-option--image' + selected + noPtr + '" data-ai="' + i + '">';
                     if (a.image) {
                         html += '<div class="pf-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
                     }
@@ -157,7 +166,7 @@
                 for (var j = 0; j < q.answers.length; j++) {
                     var b = q.answers[j];
                     var sel = this.isSelected(idx, j) ? ' pf-selected' : '';
-                    html += '<div class="pf-answer-option pf-answer-option--text' + sel + '" data-ai="' + j + '">';
+                    html += '<div class="pf-answer-option pf-answer-option--text' + sel + noPtr + '" data-ai="' + j + '">';
                     html += '<span class="pf-answer-text">' + this.escHtml(b.text) + '</span>';
                     if (q.multiple) {
                         html += '<span class="pf-checkbox"><span class="pf-check-icon"></span></span>';
@@ -186,13 +195,9 @@
 
             this.$container.html(html);
 
-            // After auto-advance on touch devices the finger's last position can
-            // land on a new answer option, triggering a ghost hover highlight.
-            // Suppress pointer events briefly so the incoming answers stay clean.
-            if (this._suppressTouch) {
-                this._suppressTouch = false;
+            // Lift the pointer suppression after a short cooldown.
+            if (suppress) {
                 var $answers = this.$container.find('.pf-answer-option');
-                $answers.addClass('pf-no-pointer');
                 setTimeout(function () { $answers.removeClass('pf-no-pointer'); }, 400);
             }
 
