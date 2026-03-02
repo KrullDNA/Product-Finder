@@ -114,7 +114,9 @@ class PF_Elementor_Widget extends Widget_Base {
             'type'       => Controls_Manager::SLIDER,
             'size_units' => array( 'px', '%', 'vw' ),
             'range'      => array(
-                'px' => array( 'min' => 300, 'max' => 1600 ),
+                'px' => array( 'min' => 300, 'max' => 2400 ),
+                '%'  => array( 'min' => 10, 'max' => 100 ),
+                'vw' => array( 'min' => 10, 'max' => 100 ),
             ),
             'selectors'  => array(
                 '{{WRAPPER}} .pf-finder' => 'max-width: {{SIZE}}{{UNIT}};',
