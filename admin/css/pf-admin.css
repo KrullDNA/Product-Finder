@@ -67,11 +67,6 @@
 
 .pf-question-body {
     padding: 16px;
-    display: none;
-}
-
-.pf-question:first-child .pf-question-body {
-    display: block;
 }
 
 /* ─── Answers ─── */
@@ -119,11 +114,6 @@
 
 .pf-answer-body {
     padding: 12px;
-    display: none;
-}
-
-.pf-answer:first-child .pf-answer-body {
-    display: block;
 }
 
 /* ─── Image ─── */

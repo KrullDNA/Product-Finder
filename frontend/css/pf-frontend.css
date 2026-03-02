@@ -157,15 +157,19 @@
     transition: transform var(--pf-transition);
 }
 
-.pf-answer-option--image:hover .pf-answer-img-wrap img {
-    transform: scale(1.05);
-}
-
 .pf-answer-option--image .pf-answer-text {
     display: block;
-    padding: 12px;
+    padding: 12px 12px 0;
     font-weight: 600;
     font-size: 14px;
+}
+
+.pf-answer-option--image .pf-answer-desc {
+    display: block;
+    padding: 4px 12px 12px;
+    font-size: 13px;
+    color: var(--pf-text-light);
+    line-height: 1.4;
 }
 
 /* === Text Layout (Two-column) === */
@@ -237,7 +241,11 @@
     transition: none !important;
 }
 
-/* Selected state: keep the hover fill visible */
+/* Selected state: keep the hover fill visible, no border */
+.pf-answer-option--text.pf-selected {
+    border-color: transparent;
+}
+
 .pf-answer-option--text.pf-selected::before {
     transform: translateX(0);
 }

@@ -85,6 +85,12 @@
             $(this).closest('.pf-question').find('.pf-question-title').text(val);
         });
 
+        // Toggle answer body
+        $(document).on('click', '.pf-answer-header', function (e) {
+            if ($(e.target).closest('.pf-remove-answer').length) return;
+            $(this).closest('.pf-answer').find('.pf-answer-body').slideToggle(200);
+        });
+
         // Add answer
         $(document).on('click', '.pf-add-answer', addAnswer);
 

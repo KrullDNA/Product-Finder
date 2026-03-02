@@ -232,9 +232,10 @@ class PF_Admin {
 
     private function render_answer_template( $qi, $ai, $answer ) {
         $answer = wp_parse_args( $answer, array(
-            'text'     => '',
-            'image_id' => '',
-            'products' => array(),
+            'text'        => '',
+            'description' => '',
+            'image_id'    => '',
+            'products'    => array(),
         ) );
         $name_prefix = "pf_questions[{$qi}][answers][{$ai}]";
         $thumb_url   = $answer['image_id'] ? wp_get_attachment_image_url( $answer['image_id'], 'thumbnail' ) : '';
@@ -250,6 +251,11 @@ class PF_Admin {
                 <p>
                     <label><?php esc_html_e( 'Answer Text', 'product-finder' ); ?></label><br>
                     <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $answer['text'] ); ?>" class="widefat pf-answer-text-input">
+                </p>
+                <!-- Description (shown under answer text on image layout) -->
+                <p>
+                    <label><?php esc_html_e( 'Description', 'product-finder' ); ?></label><br>
+                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[description]" value="<?php echo esc_attr( $answer['description'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional – displayed below the answer text on image layout', 'product-finder' ); ?>">
                 </p>
                 <!-- Image -->
                 <div class="pf-answer-image-wrap">
@@ -345,9 +351,10 @@ class PF_Admin {
             if ( ! empty( $q['answers'] ) && is_array( $q['answers'] ) ) {
                 foreach ( $q['answers'] as $a ) {
                     $answer = array(
-                        'text'     => sanitize_text_field( $a['text'] ?? '' ),
-                        'image_id' => absint( $a['image_id'] ?? 0 ),
-                        'products' => array(),
+                        'text'        => sanitize_text_field( $a['text'] ?? '' ),
+                        'description' => sanitize_text_field( $a['description'] ?? '' ),
+                        'image_id'    => absint( $a['image_id'] ?? 0 ),
+                        'products'    => array(),
                     );
                     if ( ! empty( $a['products'] ) && is_array( $a['products'] ) ) {
                         foreach ( $a['products'] as $p ) {

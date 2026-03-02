@@ -470,6 +470,44 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
+        // Answer description (image layout only)
+        $this->add_control( 'img_desc_heading', array(
+            'label'     => __( 'Answer Description', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'img_desc_color', array(
+            'label'     => __( 'Description Color', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .pf-answer-option--image .pf-answer-desc' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'img_desc_typography',
+            'selector' => '{{WRAPPER}} .pf-answer-option--image .pf-answer-desc',
+        ) );
+
+        $this->add_responsive_control( 'img_desc_padding', array(
+            'label'      => __( 'Description Padding', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-answer-option--image .pf-answer-desc' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'img_desc_margin', array(
+            'label'      => __( 'Description Margin', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-answer-option--image .pf-answer-desc' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
         $this->end_controls_section();
     }
 

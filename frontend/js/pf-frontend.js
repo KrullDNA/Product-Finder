@@ -133,6 +133,9 @@
                         html += '<div class="pf-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
                     }
                     html += '<span class="pf-answer-text">' + this.escHtml(a.text) + '</span>';
+                    if (a.description) {
+                        html += '<span class="pf-answer-desc">' + this.escHtml(a.description) + '</span>';
+                    }
                     if (q.multiple) {
                         html += '<span class="pf-checkbox"><span class="pf-check-icon"></span></span>';
                     }
