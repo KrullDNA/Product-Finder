@@ -502,11 +502,13 @@ class PF_Ajax {
      */
     private function enqueue_widget_dependencies( $html ) {
         if ( empty( $html ) || ! class_exists( '\Elementor\Plugin' ) ) {
+            $this->_debug[] = 'enqueue_widget_dependencies: skipped (no html or no Elementor)';
             return;
         }
 
         $plugin = \Elementor\Plugin::$instance;
         if ( ! $plugin || ! isset( $plugin->widgets_manager ) ) {
+            $this->_debug[] = 'enqueue_widget_dependencies: no widget manager';
             return;
         }
 
@@ -514,22 +516,32 @@ class PF_Ajax {
 
         // Extract unique widget types from the rendered HTML.
         if ( ! preg_match_all( '/data-widget_type="([^"]+)"/', $html, $matches ) ) {
+            $this->_debug[] = 'enqueue_widget_dependencies: no data-widget_type found in HTML';
+
+            // Fallback: scan for known third-party widget markup and try
+            // to enqueue their registered assets directly.
+            $this->enqueue_known_widget_assets( $html );
             return;
         }
 
+        $types_found = array_unique( $matches[1] );
+        $this->_debug[] = 'enqueue_widget_dependencies: widget types found: ' . implode( ', ', $types_found );
+
         $enqueued = array();
-        foreach ( array_unique( $matches[1] ) as $widget_type ) {
+        foreach ( $types_found as $widget_type ) {
             // widget_type is "widget_name.skin_name", we need just the name.
             $widget_name = explode( '.', $widget_type )[0];
 
             $widget = $widget_manager->get_widget_types( $widget_name );
             if ( ! $widget ) {
+                $this->_debug[] = 'enqueue_widget_dependencies: widget "' . $widget_name . '" NOT in registry';
                 continue;
             }
 
             // Enqueue declared script dependencies.
             if ( method_exists( $widget, 'get_script_depends' ) ) {
-                foreach ( $widget->get_script_depends() as $handle ) {
+                $scripts = $widget->get_script_depends();
+                foreach ( $scripts as $handle ) {
                     if ( wp_script_is( $handle, 'registered' ) && ! wp_script_is( $handle, 'enqueued' ) ) {
                         wp_enqueue_script( $handle );
                         $enqueued[] = 'js:' . $handle;
@@ -539,7 +551,8 @@ class PF_Ajax {
 
             // Enqueue declared style dependencies.
             if ( method_exists( $widget, 'get_style_depends' ) ) {
-                foreach ( $widget->get_style_depends() as $handle ) {
+                $styles = $widget->get_style_depends();
+                foreach ( $styles as $handle ) {
                     if ( wp_style_is( $handle, 'registered' ) && ! wp_style_is( $handle, 'enqueued' ) ) {
                         wp_enqueue_style( $handle );
                         $enqueued[] = 'css:' . $handle;
@@ -550,6 +563,74 @@ class PF_Ajax {
 
         if ( ! empty( $enqueued ) ) {
             $this->_debug[] = 'Widget dependencies enqueued: ' . implode( ', ', $enqueued );
+        }
+
+        // Also check for known widget markup that might not have
+        // data-widget_type (e.g. JetEngine renders without it).
+        $this->enqueue_known_widget_assets( $html );
+    }
+
+    /**
+     * Fallback: scan rendered HTML for known third-party widget CSS
+     * class names / markup and enqueue their registered assets.
+     *
+     * JetEngine's PHP API rendering may strip Elementor data attributes,
+     * so the data-widget_type approach doesn't always work.  This method
+     * checks for recognisable markup patterns and enqueues matching
+     * registered handles.
+     *
+     * @param string $html  Rendered listing HTML.
+     */
+    private function enqueue_known_widget_assets( $html ) {
+        $enqueued = array();
+
+        // FiF VSE Variation Swatches for Elementor
+        if ( strpos( $html, 'fif-vse-swatches' ) !== false ) {
+            // Try common handle patterns used by the FiF VSE plugin.
+            $handles = array(
+                'fif-vse-swatches',
+                'fif-vse-frontend',
+                'fif-vse',
+                'fif_vse_swatches',
+                'fif_vse_frontend',
+                'fif_vse',
+            );
+
+            foreach ( $handles as $handle ) {
+                if ( wp_script_is( $handle, 'registered' ) && ! wp_script_is( $handle, 'enqueued' ) ) {
+                    wp_enqueue_script( $handle );
+                    $enqueued[] = 'js:' . $handle;
+                }
+                if ( wp_style_is( $handle, 'registered' ) && ! wp_style_is( $handle, 'enqueued' ) ) {
+                    wp_enqueue_style( $handle );
+                    $enqueued[] = 'css:' . $handle;
+                }
+            }
+
+            // If nothing was found with known handles, search all
+            // registered scripts/styles for 'fif' or 'vse' in the handle.
+            if ( empty( $enqueued ) ) {
+                foreach ( wp_scripts()->registered as $handle => $dep ) {
+                    if ( ( strpos( $handle, 'fif' ) !== false || strpos( $handle, 'vse' ) !== false )
+                        && ! wp_script_is( $handle, 'enqueued' )
+                    ) {
+                        wp_enqueue_script( $handle );
+                        $enqueued[] = 'js:' . $handle . ' (fuzzy)';
+                    }
+                }
+                foreach ( wp_styles()->registered as $handle => $dep ) {
+                    if ( ( strpos( $handle, 'fif' ) !== false || strpos( $handle, 'vse' ) !== false )
+                        && ! wp_style_is( $handle, 'enqueued' )
+                    ) {
+                        wp_enqueue_style( $handle );
+                        $enqueued[] = 'css:' . $handle . ' (fuzzy)';
+                    }
+                }
+            }
+        }
+
+        if ( ! empty( $enqueued ) ) {
+            $this->_debug[] = 'Known widget assets enqueued: ' . implode( ', ', $enqueued );
         }
     }
 

@@ -524,7 +524,18 @@
             }
             console.log('[Product Finder] Elementor widgets triggered:', widgetsTriggered);
 
-            // 5. Fallback: directly fire element_ready hooks by widget type.
+            // 5. Log widget types for debugging
+            $container.find('[data-widget_type]').each(function () {
+                console.log('[Product Finder] Widget data-widget_type:', $(this).data('widget_type'));
+            });
+            $container.find('.elementor-widget').each(function () {
+                var classes = $(this).attr('class') || '';
+                var widgetClass = classes.match(/elementor-widget-(\S+)/);
+                console.log('[Product Finder] Widget class:', widgetClass ? widgetClass[1] : '(none)',
+                    'has data-widget_type:', !!$(this).attr('data-widget_type'));
+            });
+
+            // 6. Fallback: directly fire element_ready hooks by widget type.
             //    Handles cases where runReadyTrigger is unavailable or the
             //    Elementor version uses a different internal API.
             if (window.elementorFrontend && elementorFrontend.hooks) {
@@ -543,7 +554,36 @@
                 });
             }
 
-            // 6. Trigger generic post-load event (many WP plugins listen for this)
+            // 7. Direct swatch widget initialization fallback.
+            //    If the swatch plugin's JS was just loaded dynamically,
+            //    its Elementor hooks might not be registered yet.
+            //    Find swatch wrappers and try to initialize them directly.
+            var $swatchWraps = $container.find('.fif-vse-swatches');
+            if ($swatchWraps.length) {
+                console.log('[Product Finder] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
+                $swatchWraps.each(function () {
+                    var $wrap = $(this);
+                    $wrap.removeData('fifVseInit');
+
+                    // Try firing the swatch widget's specific Elementor hook
+                    var $widget = $wrap.closest('.elementor-widget');
+                    if ($widget.length && window.elementorFrontend && elementorFrontend.hooks) {
+                        console.log('[Product Finder] Firing swatch hook on widget',
+                            'widget_type:', $widget.attr('data-widget_type'),
+                            'element:', $widget.get(0));
+                        try {
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/fif_vse_variation_swatches.default',
+                                $widget
+                            );
+                        } catch (e) {
+                            console.warn('[Product Finder] Swatch hook error:', e);
+                        }
+                    }
+                });
+            }
+
+            // 8. Trigger generic post-load event (many WP plugins listen for this)
             $(document.body).trigger('post-load');
 
             // WooCommerce cart fragments refresh
