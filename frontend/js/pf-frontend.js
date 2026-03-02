@@ -63,26 +63,29 @@
                 self.handleAnswerClick($(this));
             });
 
-            // Text answer hover-out animation: slide out to the right
-            this.$el.on('mouseenter', '.pf-answer-option--text', function () {
-                $(this).removeClass('pf-hover-out pf-no-transition');
-            });
-            this.$el.on('mouseleave', '.pf-answer-option--text', function () {
-                if (!$(this).hasClass('pf-selected')) {
-                    $(this).addClass('pf-hover-out');
-                    // After slide-out animation, snap ::before back to start without transition
-                    // (prevents flash through translateX(0) on the way from 100% to -100%)
-                    var $opt = $(this);
-                    setTimeout(function () {
-                        $opt.addClass('pf-no-transition').removeClass('pf-hover-out');
-                        // Force reflow so the snap happens before re-enabling transitions
-                        void $opt[0].offsetHeight;
-                        requestAnimationFrame(function () {
-                            $opt.removeClass('pf-no-transition');
-                        });
-                    }, 350);
-                }
-            });
+            // Text answer hover-out animation: slide out to the right.
+            // Only attach on devices that truly support hover (no touch ghost events).
+            if (window.matchMedia('(hover: hover)').matches) {
+                this.$el.on('mouseenter', '.pf-answer-option--text', function () {
+                    $(this).removeClass('pf-hover-out pf-no-transition');
+                });
+                this.$el.on('mouseleave', '.pf-answer-option--text', function () {
+                    if (!$(this).hasClass('pf-selected')) {
+                        $(this).addClass('pf-hover-out');
+                        // After slide-out animation, snap ::before back to start without transition
+                        // (prevents flash through translateX(0) on the way from 100% to -100%)
+                        var $opt = $(this);
+                        setTimeout(function () {
+                            $opt.addClass('pf-no-transition').removeClass('pf-hover-out');
+                            // Force reflow so the snap happens before re-enabling transitions
+                            void $opt[0].offsetHeight;
+                            requestAnimationFrame(function () {
+                                $opt.removeClass('pf-no-transition');
+                            });
+                        }, 350);
+                    }
+                });
+            }
 
             this.$el.on('click', '.pf-btn-continue', function () {
                 self.goNext();

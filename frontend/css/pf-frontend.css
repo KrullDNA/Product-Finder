@@ -131,10 +131,12 @@
     position: relative;
 }
 
-.pf-answer-option--image:hover {
-    border-color: var(--pf-accent);
-    box-shadow: var(--pf-shadow);
-    transform: translateY(-2px);
+@media (hover: hover) {
+    .pf-answer-option--image:hover {
+        border-color: var(--pf-accent);
+        box-shadow: var(--pf-shadow);
+        transform: translateY(-2px);
+    }
 }
 
 .pf-answer-option--image.pf-selected {
@@ -227,13 +229,15 @@
     z-index: -1;
 }
 
-.pf-answer-option--text:hover::before {
-    transform: translateX(0);
-}
+@media (hover: hover) {
+    .pf-answer-option--text:hover::before {
+        transform: translateX(0);
+    }
 
-/* When mouse leaves, animate out to the left */
-.pf-answer-option--text.pf-hover-out::before {
-    transform: translateX(-100%);
+    /* When mouse leaves, animate out to the left */
+    .pf-answer-option--text.pf-hover-out::before {
+        transform: translateX(-100%);
+    }
 }
 
 /* Disable transition when resetting ::before position (prevents flash through translateX(0)) */
