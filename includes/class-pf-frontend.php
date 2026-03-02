@@ -111,7 +111,7 @@ class PF_Frontend {
                 'answers'     => array(),
             );
             foreach ( $q['answers'] as $a ) {
-                $image_url = ! empty( $a['image_id'] ) ? wp_get_attachment_image_url( $a['image_id'], 'medium' ) : '';
+                $image_url = ! empty( $a['image_id'] ) ? wp_get_attachment_image_url( $a['image_id'], 'large' ) : '';
                 $q_data['answers'][] = array(
                     'text'        => $a['text'],
                     'description' => $a['description'] ?? '',

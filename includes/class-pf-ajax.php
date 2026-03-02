@@ -85,7 +85,7 @@ class PF_Ajax {
                 'answers'     => array(),
             );
             foreach ( $q['answers'] as $a ) {
-                $image_url = $a['image_id'] ? wp_get_attachment_image_url( $a['image_id'], 'medium' ) : '';
+                $image_url = $a['image_id'] ? wp_get_attachment_image_url( $a['image_id'], 'large' ) : '';
                 $q_data['answers'][] = array(
                     'text'  => $a['text'],
                     'image' => $image_url,
@@ -275,7 +275,7 @@ class PF_Ajax {
                 'id'                => $pid,
                 'name'              => $product->get_name(),
                 'price'             => $product->get_price_html(),
-                'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'medium' ),
+                'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'large' ),
                 'permalink'         => $product->get_permalink(),
                 'score'             => $product_scores[ $pid ],
                 'match_pct'         => $match_pct,

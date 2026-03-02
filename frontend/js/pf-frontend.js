@@ -292,14 +292,10 @@
         /* ───────── Progress bar ───────── */
 
         updateProgress: function () {
-            // Count how many questions have been answered
-            var answered = 0;
-            for (var i = 0; i < this.totalQ; i++) {
-                if (this.answers[i] && this.answers[i].length) {
-                    answered++;
-                }
-            }
-            var pct = Math.round((answered / this.totalQ) * 100);
+            // Progress reflects the current position in the quiz.
+            // current is 0-based, so current/totalQ gives the fraction
+            // of the quiz the user has reached.
+            var pct = Math.round((this.current / this.totalQ) * 100);
             this.$progress.css('width', pct + '%');
             this.$progressText.text(pct + '%');
         },
