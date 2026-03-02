@@ -325,6 +325,12 @@
     box-shadow: 0 4px 12px rgba(74, 144, 217, 0.3);
 }
 
+.pf-btn-disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .pf-btn-secondary {
     background: transparent;
     color: var(--pf-text-light);

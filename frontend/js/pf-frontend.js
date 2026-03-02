@@ -174,7 +174,8 @@
                 html += '<span></span>';
             }
             if (q.multiple) {
-                html += '<button type="button" class="pf-btn pf-btn-primary pf-btn-continue">' + pfFrontend.i18n.next + '</button>';
+                var hasSelection = this.answers[idx] && this.answers[idx].length > 0;
+                html += '<button type="button" class="pf-btn pf-btn-primary pf-btn-continue' + (hasSelection ? '' : ' pf-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + pfFrontend.i18n.next + '</button>';
             }
             html += '</div>';
 
@@ -202,6 +203,13 @@
                     this.answers[qi].push(ai);
                 } else {
                     this.answers[qi].splice(pos, 1);
+                }
+                // Enable/disable continue button
+                var $btn = this.$container.find('.pf-btn-continue');
+                if (this.answers[qi].length > 0) {
+                    $btn.removeClass('pf-btn-disabled').prop('disabled', false);
+                } else {
+                    $btn.addClass('pf-btn-disabled').prop('disabled', true);
                 }
             } else {
                 // Single select: record and advance
