@@ -8,6 +8,21 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class PF_Ajax {
 
+    /**
+     * Maps parent product ID → matched variation ID during result rendering.
+     * Widgets inside the CrocoBlock listing can read this to show the
+     * specific variation that was scored by the finder.
+     */
+    private static $matched_variations = array();
+
+    /**
+     * Get the matched variation ID for a given parent product.
+     * Returns 0 if no specific variation was matched.
+     */
+    public static function get_matched_variation( $parent_id ) {
+        return self::$matched_variations[ (int) $parent_id ] ?? 0;
+    }
+
     public function __construct() {
         // Admin: product search
         add_action( 'wp_ajax_pf_search_products', array( $this, 'search_products' ) );
@@ -305,6 +320,18 @@ class PF_Ajax {
 
         if ( $is_beauty ) {
             $this->_debug[] = 'finder_type=beauty';
+        }
+
+        // Build parent → matched variation mapping so widgets inside the
+        // CrocoBlock listing can show the specific variation that scored.
+        self::$matched_variations = array();
+        foreach ( $top_keys as $key ) {
+            $info = $key_map[ $key ];
+            $vid  = $info['variation_id'];
+            $pid  = $info['pid'];
+            if ( $vid && ! isset( self::$matched_variations[ $pid ] ) ) {
+                self::$matched_variations[ $pid ] = $vid;
+            }
         }
 
         // If CrocoBlock listing template is set, render via JetEngine.

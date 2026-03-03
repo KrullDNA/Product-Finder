@@ -913,3 +913,22 @@ i.pf-loading-icon {
     width: auto;
     height: auto;
 }
+
+/* === PF Product Image Widget === */
+
+.pf-pi-wrap {
+    line-height: 0;
+}
+
+.pf-pi-link {
+    display: block;
+    text-decoration: none;
+}
+
+.pf-pi-img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+    transition: opacity 0.25s ease;
+}

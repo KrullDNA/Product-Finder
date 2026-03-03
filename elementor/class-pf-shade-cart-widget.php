@@ -444,18 +444,37 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         $variation_attrs = array();
 
         if ( $the_product->is_type( 'variable' ) ) {
-            $variations = $the_product->get_available_variations( 'objects' );
-            if ( ! empty( $variations ) ) {
-                // Pick the first in-stock variation.
-                foreach ( $variations as $var ) {
-                    if ( $var->is_in_stock() ) {
-                        $variation = $var;
-                        break;
+            // Check if Product Finder matched a specific variation for
+            // this parent product (set during compute_results rendering).
+            $matched_vid = 0;
+            if ( class_exists( 'PF_Ajax' ) ) {
+                $matched_vid = PF_Ajax::get_matched_variation( $product_id );
+            }
+
+            if ( $matched_vid ) {
+                $variation = wc_get_product( $matched_vid );
+                if ( ! $variation || ! $variation->is_type( 'variation' ) ) {
+                    $variation = null;
+                }
+            }
+
+            // Fallback: pick the first in-stock variation.
+            if ( ! $variation ) {
+                $variations = $the_product->get_available_variations( 'objects' );
+                if ( ! empty( $variations ) ) {
+                    foreach ( $variations as $var ) {
+                        if ( $var->is_in_stock() ) {
+                            $variation = $var;
+                            break;
+                        }
+                    }
+                    if ( ! $variation ) {
+                        $variation = $variations[0];
                     }
                 }
-                if ( ! $variation ) {
-                    $variation = $variations[0];
-                }
+            }
+
+            if ( $variation ) {
 
                 $variation_id   = $variation->get_id();
                 $variation_attrs = $variation->get_attributes();
