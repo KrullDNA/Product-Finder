@@ -334,13 +334,15 @@ class PF_Shade_Cart_Widget extends Widget_Base {
 
         $this->add_group_control( Group_Control_Typography::get_type(), array(
             'name'     => 'price_typography',
-            'selector' => '{{WRAPPER}} .pf-sc-btn-price',
+            'selector' => '{{WRAPPER}} .pf-sc-btn-price, {{WRAPPER}} .pf-sc-btn-price *',
         ) );
 
         $this->add_control( 'price_color', array(
             'label'     => __( 'Colour', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
-            'selectors' => array( '{{WRAPPER}} .pf-sc-btn-price' => 'color: {{VALUE}};' ),
+            'selectors' => array(
+                '{{WRAPPER}} .pf-sc-btn-price, {{WRAPPER}} .pf-sc-btn-price *' => 'color: {{VALUE}};',
+            ),
         ) );
 
         $this->end_controls_section();
