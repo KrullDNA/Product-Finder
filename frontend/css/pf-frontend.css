@@ -965,8 +965,15 @@ i.pf-loading-icon {
 
 /* ── PF Category Label ── */
 
+/* Shrink Elementor's own widget wrapper to fit content */
+.elementor-widget-pf_category_label {
+    width: fit-content !important;
+    max-width: fit-content !important;
+}
+
 .pf-cl-wrap {
     display: inline-block;
+    line-height: 1;
 }
 
 .pf-cl-label {
@@ -976,6 +983,7 @@ i.pf-loading-icon {
     text-transform: uppercase;
     margin: 0;
     white-space: nowrap;
+    line-height: 1;
 }
 
 /* Vertical: text reads top-to-bottom */
@@ -983,10 +991,16 @@ i.pf-loading-icon {
     writing-mode: vertical-rl;
     text-orientation: mixed;
 }
+.pf-cl--vertical .pf-cl-label {
+    white-space: nowrap;
+}
 
 /* Vertical reversed: text reads bottom-to-top */
 .pf-cl--vertical-r {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     transform: rotate(180deg);
+}
+.pf-cl--vertical-r .pf-cl-label {
+    white-space: nowrap;
 }
