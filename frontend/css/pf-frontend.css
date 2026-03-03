@@ -801,6 +801,7 @@ i.pf-loading-icon {
     display: inline-block;
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .pf-sc-circle.fif-vse-preview {
