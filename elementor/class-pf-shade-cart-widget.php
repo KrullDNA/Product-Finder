@@ -70,16 +70,16 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         $this->add_control( 'color_meta_key', array(
             'label'       => __( 'Colour Meta Key', 'product-finder' ),
             'type'        => Controls_Manager::TEXT,
-            'default'     => 'product_attribute_color',
-            'description' => __( 'Term meta key where the hex colour is stored by your swatch plugin.', 'product-finder' ),
+            'default'     => 'fif_swatch_color',
+            'description' => __( 'Term meta key where the hex colour is stored by your swatch plugin (FiF VSE uses fif_swatch_color).', 'product-finder' ),
             'label_block' => true,
         ) );
 
         $this->add_control( 'image_meta_key', array(
             'label'       => __( 'Image Meta Key', 'product-finder' ),
             'type'        => Controls_Manager::TEXT,
-            'default'     => 'product_attribute_image',
-            'description' => __( 'Term meta key where the swatch image URL or attachment ID is stored. Takes priority over hex colour (FiF VSE uses product_attribute_image).', 'product-finder' ),
+            'default'     => 'fif_swatch_image_id',
+            'description' => __( 'Term meta key where the swatch image URL or attachment ID is stored. Takes priority over hex colour (FiF VSE uses fif_swatch_image_id).', 'product-finder' ),
             'label_block' => true,
         ) );
 
@@ -634,6 +634,7 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                             // then common FiF VSE / swatch plugin keys.
                             $image_keys = array_unique( array_filter( array(
                                 $image_meta_key,
+                                'fif_swatch_image_id',
                                 'product_attribute_image',
                                 'image',
                                 '_image',
@@ -662,7 +663,7 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                             if ( ! $shade_image ) {
                                 $color = get_term_meta( $term->term_id, $meta_key, true );
                                 if ( ! $color ) {
-                                    foreach ( array( 'product_attribute_color', 'color', '_color', 'attribute_swatch_color' ) as $alt_key ) {
+                                    foreach ( array( 'fif_swatch_color', 'product_attribute_color', 'color', '_color', 'attribute_swatch_color' ) as $alt_key ) {
                                         if ( $alt_key === $meta_key ) {
                                             continue;
                                         }
