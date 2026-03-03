@@ -476,17 +476,59 @@ class PF_Shade_Cart_Widget extends Widget_Base {
 
             if ( $variation ) {
 
-                $variation_id   = $variation->get_id();
+                $variation_id    = $variation->get_id();
                 $variation_attrs = $variation->get_attributes();
-                $price_html     = $variation->get_price_html();
+                $price_html      = $variation->get_price_html();
 
-                // Extract the shade attribute value.
+                // Debug: log available attributes so the user can
+                // verify the correct Shade Attribute setting.
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( '[PF Shade Cart] Product #' . $product_id
+                        . ' variation #' . $variation_id
+                        . ' attrs: ' . wp_json_encode( $variation_attrs )
+                        . ' | looking for shade_attr="' . $shade_attr . '"' );
+                }
+
+                // Find the shade attribute value.  Try the configured key
+                // first, then fall back to searching all attributes for a
+                // key that contains the configured slug (handles pa_ prefix
+                // mismatches and 'attribute_' prefix variations).
+                $shade_slug = '';
+                $matched_attr_key = '';
+
                 if ( isset( $variation_attrs[ $shade_attr ] ) && '' !== $variation_attrs[ $shade_attr ] ) {
+                    // Exact match.
                     $shade_slug = $variation_attrs[ $shade_attr ];
+                    $matched_attr_key = $shade_attr;
+                } else {
+                    // Fuzzy match: strip pa_ prefix and compare.
+                    $shade_bare = preg_replace( '/^pa_/', '', $shade_attr );
+                    foreach ( $variation_attrs as $attr_key => $attr_val ) {
+                        if ( '' === $attr_val ) {
+                            continue;
+                        }
+                        $key_bare = preg_replace( '/^pa_/', '', $attr_key );
+                        if ( $key_bare === $shade_bare ) {
+                            $shade_slug = $attr_val;
+                            $matched_attr_key = $attr_key;
+                            break;
+                        }
+                    }
+
+                    // Last resort: if only one attribute exists, use it.
+                    if ( ! $shade_slug && count( $variation_attrs ) === 1 ) {
+                        $shade_slug = reset( $variation_attrs );
+                        $matched_attr_key = key( $variation_attrs );
+                    }
+                }
+
+                if ( $shade_slug ) {
+                    // Determine the taxonomy to search for the term.
+                    $taxonomy = $matched_attr_key;
 
                     // Get human-readable label.
-                    if ( taxonomy_exists( $shade_attr ) ) {
-                        $term = get_term_by( 'slug', $shade_slug, $shade_attr );
+                    if ( taxonomy_exists( $taxonomy ) ) {
+                        $term = get_term_by( 'slug', $shade_slug, $taxonomy );
                         if ( $term && ! is_wp_error( $term ) ) {
                             $shade_label = $term->name;
 
@@ -500,6 +542,17 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                                     }
                                     $color = get_term_meta( $term->term_id, $alt_key, true );
                                     if ( $color ) {
+                                        break;
+                                    }
+                                }
+                            }
+                            // If still no colour, try ALL term meta for any hex value.
+                            if ( ! $color ) {
+                                $all_meta = get_term_meta( $term->term_id );
+                                foreach ( $all_meta as $mk => $mv ) {
+                                    $val = is_array( $mv ) ? ( $mv[0] ?? '' ) : $mv;
+                                    if ( preg_match( '/^#[0-9a-fA-F]{3,8}$/', $val ) ) {
+                                        $color = $val;
                                         break;
                                     }
                                 }
@@ -538,6 +591,20 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         // ── Output ──
 
         echo '<div class="pf-sc-wrap">';
+
+        // Debug comment visible in browser inspector.
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            printf(
+                '<!-- PF-SC debug: pid=%d vid=%d shade_attr="%s" shade_slug="%s" shade_label="%s" shade_hex="%s" attrs=%s -->',
+                $product_id,
+                $variation_id,
+                esc_html( $shade_attr ),
+                esc_html( $shade_slug ),
+                esc_html( $shade_label ),
+                esc_html( $shade_hex ),
+                esc_html( wp_json_encode( $variation_attrs ) )
+            );
+        }
 
         // Shade row (only if we have shade data).
         if ( $shade_label ) {
