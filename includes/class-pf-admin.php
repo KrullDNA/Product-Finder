@@ -44,15 +44,26 @@ class PF_Admin {
             true
         );
 
+        // Get current finder_type for this post.
+        $pf_options = array();
+        if ( isset( $_GET['post'] ) ) {
+            $pf_options = get_post_meta( absint( $_GET['post'] ), '_pf_options', true );
+        }
+        $pf_options = wp_parse_args( (array) $pf_options, array( 'finder_type' => 'cosmeceuticals' ) );
+
         wp_localize_script( 'pf-admin', 'pfAdmin', array(
             'ajax_url'     => admin_url( 'admin-ajax.php' ),
             'nonce'        => wp_create_nonce( 'pf_admin_nonce' ),
+            'finder_type'  => $pf_options['finder_type'],
             'i18n'         => array(
-                'select_image'  => __( 'Select Image', 'product-finder' ),
-                'remove_image'  => __( 'Remove', 'product-finder' ),
-                'use_image'     => __( 'Use this image', 'product-finder' ),
-                'search_product'=> __( 'Search for a product…', 'product-finder' ),
-                'confirm_del'   => __( 'Delete this item?', 'product-finder' ),
+                'select_image'      => __( 'Select Image', 'product-finder' ),
+                'remove_image'      => __( 'Remove', 'product-finder' ),
+                'use_image'         => __( 'Use this image', 'product-finder' ),
+                'search_product'    => __( 'Search for a product…', 'product-finder' ),
+                'confirm_del'       => __( 'Delete this item?', 'product-finder' ),
+                'select_variation'  => __( '— Select variation —', 'product-finder' ),
+                'loading_variations'=> __( 'Loading variations…', 'product-finder' ),
+                'no_variations'     => __( 'No variations found (simple product)', 'product-finder' ),
             ),
         ) );
     }
@@ -108,12 +119,27 @@ class PF_Admin {
             'cols_desktop'      => 3,
             'cols_tablet'       => 2,
             'cols_mobile'       => 1,
+            'finder_type'       => 'cosmeceuticals',
         ) );
 
         wp_nonce_field( 'pf_save_meta', 'pf_meta_nonce' );
 
         $templates = $this->get_crocoblock_templates();
         ?>
+        <div class="pf-finder-type-wrap">
+            <label><strong><?php esc_html_e( 'Finder Type', 'product-finder' ); ?></strong></label><br>
+            <label class="pf-finder-type-option">
+                <input type="radio" name="pf_options[finder_type]" value="cosmeceuticals" <?php checked( $options['finder_type'], 'cosmeceuticals' ); ?>>
+                <?php esc_html_e( 'Cosmeceuticals', 'product-finder' ); ?>
+                <span class="description"><?php esc_html_e( 'Simple product recommendations', 'product-finder' ); ?></span>
+            </label>
+            <label class="pf-finder-type-option">
+                <input type="radio" name="pf_options[finder_type]" value="beauty" <?php checked( $options['finder_type'], 'beauty' ); ?>>
+                <?php esc_html_e( 'Beauty', 'product-finder' ); ?>
+                <span class="description"><?php esc_html_e( 'Product variation recommendations (shades, colours)', 'product-finder' ); ?></span>
+            </label>
+        </div>
+        <hr>
         <p>
             <label><strong><?php esc_html_e( 'Number of results to show', 'product-finder' ); ?></strong></label><br>
             <input type="number" name="pf_options[num_results]" value="<?php echo esc_attr( $options['num_results'] ); ?>" min="1" max="50" class="widefat">
@@ -289,15 +315,38 @@ class PF_Admin {
 
     private function render_product_row_template( $qi, $ai, $pi, $prod ) {
         $prod = wp_parse_args( $prod, array(
-            'id'   => '',
-            'rank' => 1,
+            'id'           => '',
+            'variation_id' => '',
+            'rank'         => 1,
         ) );
         $name_prefix = "pf_questions[{$qi}][answers][{$ai}][products][{$pi}]";
         $product_name = $prod['id'] ? get_the_title( $prod['id'] ) : '{{data.name}}';
+
+        // If a variation is saved, get its name for display.
+        $variation_name = '';
+        if ( $prod['variation_id'] && function_exists( 'wc_get_product' ) ) {
+            $variation = wc_get_product( $prod['variation_id'] );
+            if ( $variation && $variation->is_type( 'variation' ) ) {
+                $attrs = $variation->get_attributes();
+                $variation_name = implode( ', ', array_values( $attrs ) );
+            }
+        }
         ?>
-        <div class="pf-product-row" data-pi="<?php echo esc_attr( $pi ); ?>">
+        <div class="pf-product-row" data-pi="<?php echo esc_attr( $pi ); ?>" data-product-id="<?php echo esc_attr( $prod['id'] ); ?>">
             <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $prod['id'] ); ?>" class="pf-product-id">
+            <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[variation_id]" value="<?php echo esc_attr( $prod['variation_id'] ); ?>" class="pf-variation-id">
             <span class="pf-product-name"><?php echo esc_html( $product_name ); ?></span>
+            <div class="pf-variation-picker" style="display:none;">
+                <select class="pf-variation-select" data-current="<?php echo esc_attr( $prod['variation_id'] ); ?>">
+                    <option value=""><?php esc_html_e( '— Select variation —', 'product-finder' ); ?></option>
+                    <?php if ( $prod['variation_id'] && $variation_name ) : ?>
+                        <option value="<?php echo esc_attr( $prod['variation_id'] ); ?>" selected><?php echo esc_html( $variation_name ); ?></option>
+                    <?php endif; ?>
+                </select>
+                <?php if ( $prod['variation_id'] && $variation_name ) : ?>
+                    <span class="pf-variation-name"><?php echo esc_html( $variation_name ); ?></span>
+                <?php endif; ?>
+            </div>
             <label class="pf-product-rank-label"><?php esc_html_e( 'Rank:', 'product-finder' ); ?>
                 <input type="number" name="<?php echo esc_attr( $name_prefix ); ?>[rank]" value="<?php echo esc_attr( $prod['rank'] ); ?>" min="1" class="pf-product-rank small-text">
             </label>
@@ -326,12 +375,17 @@ class PF_Admin {
 
         // Save options
         $raw_options = $_POST['pf_options'] ?? array();
+        $finder_type = sanitize_text_field( $raw_options['finder_type'] ?? 'cosmeceuticals' );
+        if ( ! in_array( $finder_type, array( 'cosmeceuticals', 'beauty' ), true ) ) {
+            $finder_type = 'cosmeceuticals';
+        }
         $options     = array(
             'num_results'      => absint( $raw_options['num_results'] ?? 5 ),
             'listing_template' => sanitize_text_field( $raw_options['listing_template'] ?? '' ),
             'cols_desktop'     => absint( $raw_options['cols_desktop'] ?? 3 ),
             'cols_tablet'      => absint( $raw_options['cols_tablet'] ?? 2 ),
             'cols_mobile'      => absint( $raw_options['cols_mobile'] ?? 1 ),
+            'finder_type'      => $finder_type,
         );
         update_post_meta( $post_id, '_pf_options', $options );
     }
@@ -359,8 +413,9 @@ class PF_Admin {
                     if ( ! empty( $a['products'] ) && is_array( $a['products'] ) ) {
                         foreach ( $a['products'] as $p ) {
                             $answer['products'][] = array(
-                                'id'   => absint( $p['id'] ?? 0 ),
-                                'rank' => absint( $p['rank'] ?? 1 ),
+                                'id'           => absint( $p['id'] ?? 0 ),
+                                'variation_id' => absint( $p['variation_id'] ?? 0 ),
+                                'rank'         => absint( $p['rank'] ?? 1 ),
                             );
                         }
                     }

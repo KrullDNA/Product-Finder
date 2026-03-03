@@ -320,13 +320,21 @@
 
             // First compute results to get product IDs, then send email
             this.computeResults(function (data) {
-                $.post(pfFrontend.ajax_url, {
+                var postData = {
                     action: 'pf_send_results_email',
                     nonce: pfFrontend.nonce,
                     finder_id: self.finderId,
                     email: email,
                     product_ids: data.product_ids
-                }, function (res) {
+                };
+
+                // In Beauty mode, pass variation-aware product data for the email.
+                var opts = data.options || self.options;
+                if (opts.finder_type === 'beauty' && data.products && data.products.length) {
+                    postData.products_data = JSON.stringify(data.products);
+                }
+
+                $.post(pfFrontend.ajax_url, postData, function (res) {
                     if (res.success) {
                         $msg.text(pfFrontend.i18n.email_success).css('color', '#00a32a').show();
                         // Show view results button
@@ -656,6 +664,7 @@
             var colsD = opts.cols_desktop || 3;
             var colsT = opts.cols_tablet || 2;
             var colsM = opts.cols_mobile || 1;
+            var isBeauty = (opts.finder_type === 'beauty');
 
             var html = '<div class="pf-results-grid pf-cols-d-' + colsD + ' pf-cols-t-' + colsT + ' pf-cols-m-' + colsM + '">';
             var products = data.products || [];
@@ -683,6 +692,23 @@
                         html += '<li>' + this.escHtml(p.reasons[r]) + '</li>';
                     }
                     html += '</ul>';
+                }
+
+                // Add to cart button
+                if (isBeauty && p.is_variable && p.variation_id) {
+                    // Beauty mode: add specific variation to cart
+                    html += '<button type="button" class="pf-btn pf-btn-primary pf-atc-btn pf-atc-variation-btn"'
+                        + ' data-product_id="' + p.id + '"'
+                        + ' data-variation_id="' + p.variation_id + '"';
+                    // Include variation attributes as data attrs
+                    if (p.variation_attributes) {
+                        for (var attrKey in p.variation_attributes) {
+                            if (p.variation_attributes.hasOwnProperty(attrKey)) {
+                                html += ' data-' + this.escHtml(attrKey) + '="' + this.escHtml(p.variation_attributes[attrKey]) + '"';
+                            }
+                        }
+                    }
+                    html += '>' + pfFrontend.i18n.add_to_cart + '</button>';
                 }
 
                 html += '</div>';

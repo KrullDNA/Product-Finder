@@ -12,6 +12,9 @@ class PF_Ajax {
         // Admin: product search
         add_action( 'wp_ajax_pf_search_products', array( $this, 'search_products' ) );
 
+        // Admin: get variations for a product
+        add_action( 'wp_ajax_pf_get_variations', array( $this, 'get_variations' ) );
+
         // Frontend: get finder data
         add_action( 'wp_ajax_pf_get_finder', array( $this, 'get_finder' ) );
         add_action( 'wp_ajax_nopriv_pf_get_finder', array( $this, 'get_finder' ) );
@@ -52,6 +55,48 @@ class PF_Ajax {
                 'text'  => $product->get_name(),
                 'price' => $product->get_price_html(),
                 'thumb' => wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' ),
+            );
+        }
+
+        wp_send_json( $results );
+    }
+
+    /* ────────── Admin: get variations for a product ────────── */
+
+    public function get_variations() {
+        check_ajax_referer( 'pf_admin_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error();
+        }
+
+        $product_id = absint( $_GET['product_id'] ?? 0 );
+        if ( ! $product_id ) {
+            wp_send_json( array() );
+        }
+
+        $product = wc_get_product( $product_id );
+        if ( ! $product || ! $product->is_type( 'variable' ) ) {
+            wp_send_json( array() );
+        }
+
+        $variations = $product->get_available_variations();
+        $results    = array();
+
+        foreach ( $variations as $var ) {
+            $attrs = array();
+            foreach ( $var['attributes'] as $key => $val ) {
+                $taxonomy = str_replace( 'attribute_', '', $key );
+                $label    = wc_attribute_label( $taxonomy );
+                $term     = get_term_by( 'slug', $val, $taxonomy );
+                $attrs[]  = ( $term ? $term->name : $val );
+            }
+
+            $results[] = array(
+                'id'    => $var['variation_id'],
+                'text'  => implode( ' / ', $attrs ),
+                'price' => $var['price_html'] ?? '',
+                'thumb' => $var['image']['thumb_src'] ?? '',
             );
         }
 
@@ -130,7 +175,10 @@ class PF_Ajax {
             'cols_desktop'     => 3,
             'cols_tablet'      => 2,
             'cols_mobile'      => 1,
+            'finder_type'      => 'cosmeceuticals',
         ) );
+
+        $is_beauty = ( 'beauty' === ( $options['finder_type'] ?? 'cosmeceuticals' ) );
 
         if ( ! is_array( $questions ) ) {
             $this->ob_clean_to( $ob_baseline );
@@ -139,11 +187,15 @@ class PF_Ajax {
 
         /* ── Intelligent scoring: collate ALL answers for comprehensive matching ── */
 
-        $product_scores    = array(); // pid => raw score
-        $product_questions = array(); // pid => array of question indices where product appeared
-        $product_answers   = array(); // pid => array of { qi, ai, question_text, answer_text }
-        $max_possible      = 0;       // theoretical maximum score if a product appeared rank-1 in every answer
-        $total_answered    = 0;       // number of questions actually answered
+        // In Beauty mode, scoring keys are "pid:variation_id" when a variation
+        // is specified, allowing different shades of the same parent product to
+        // be scored independently.  In Cosmeceuticals mode the key is just pid.
+        $product_scores    = array(); // key => raw score
+        $product_questions = array(); // key => array of question indices
+        $product_answers   = array(); // key => array of { qi, ai, question_text, answer_text }
+        $key_map           = array(); // key => { pid, variation_id }
+        $max_possible      = 0;
+        $total_answered    = 0;
 
         foreach ( $answers as $qi => $selected_indices ) {
             if ( ! isset( $questions[ $qi ] ) ) {
@@ -175,28 +227,36 @@ class PF_Ajax {
                 $max_possible += $max_rank;
 
                 foreach ( $a['products'] as $p ) {
-                    $pid  = absint( $p['id'] );
-                    $rank = absint( $p['rank'] );
+                    $pid          = absint( $p['id'] );
+                    $variation_id = absint( $p['variation_id'] ?? 0 );
+                    $rank         = absint( $p['rank'] );
                     if ( ! $pid ) {
                         continue;
                     }
 
+                    // Build the scoring key.
+                    $key = ( $is_beauty && $variation_id ) ? $pid . ':' . $variation_id : (string) $pid;
+
                     $score = $max_rank + 1 - $rank;
 
-                    if ( ! isset( $product_scores[ $pid ] ) ) {
-                        $product_scores[ $pid ]    = 0;
-                        $product_questions[ $pid ] = array();
-                        $product_answers[ $pid ]   = array();
+                    if ( ! isset( $product_scores[ $key ] ) ) {
+                        $product_scores[ $key ]    = 0;
+                        $product_questions[ $key ] = array();
+                        $product_answers[ $key ]   = array();
+                        $key_map[ $key ]           = array(
+                            'pid'          => $pid,
+                            'variation_id' => $variation_id,
+                        );
                     }
-                    $product_scores[ $pid ] += $score;
+                    $product_scores[ $key ] += $score;
 
                     // Track which questions this product matched.
-                    if ( ! in_array( (int) $qi, $product_questions[ $pid ], true ) ) {
-                        $product_questions[ $pid ][] = (int) $qi;
+                    if ( ! in_array( (int) $qi, $product_questions[ $key ], true ) ) {
+                        $product_questions[ $key ][] = (int) $qi;
                     }
 
                     // Record the answer context for the recommendation summary.
-                    $product_answers[ $pid ][] = array(
+                    $product_answers[ $key ][] = array(
                         'qi'            => (int) $qi,
                         'ai'            => $ai,
                         'question_text' => $q['text'],
@@ -217,52 +277,73 @@ class PF_Ajax {
          * above one that scores high on only 1 question.
          */
         $composite_scores = array();
-        foreach ( $product_scores as $pid => $raw ) {
+        foreach ( $product_scores as $key => $raw ) {
             $coverage = $total_answered > 0
-                ? count( $product_questions[ $pid ] ) / $total_answered
+                ? count( $product_questions[ $key ] ) / $total_answered
                 : 0;
-            $composite_scores[ $pid ] = $raw * ( 1 + $coverage );
+            $composite_scores[ $key ] = $raw * ( 1 + $coverage );
         }
 
         arsort( $composite_scores );
 
         // Limit results.
-        $top_ids = array_slice( array_keys( $composite_scores ), 0, (int) $options['num_results'] );
+        $top_keys = array_slice( array_keys( $composite_scores ), 0, (int) $options['num_results'] );
+
+        // Extract parent product IDs for CrocoBlock listing rendering.
+        $top_ids = array();
+        foreach ( $top_keys as $key ) {
+            $pid = $key_map[ $key ]['pid'] ?? (int) $key;
+            if ( ! in_array( $pid, $top_ids, true ) ) {
+                $top_ids[] = $pid;
+            }
+        }
 
         // Debug log
         $this->_debug = array();
         $this->_new_styles  = array();
         $this->_new_scripts = array();
 
-        // If CrocoBlock listing template is set, render via JetEngine
+        if ( $is_beauty ) {
+            $this->_debug[] = 'finder_type=beauty';
+        }
+
+        // If CrocoBlock listing template is set AND we're not in Beauty mode,
+        // render via JetEngine.  In Beauty mode we always use the fallback
+        // renderer since CrocoBlock listings show the parent product, not
+        // the specific variation image/price we need.
         $html = '';
-        if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) ) {
+        if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) && ! $is_beauty ) {
             $this->_debug[] = 'listing_template=' . $options['listing_template'] . ', product_ids=' . implode( ',', $top_ids );
             $html = $this->render_crocoblock_listing( $top_ids, $options );
             $this->_debug[] = 'final listing_html length=' . strlen( $html );
+        } else if ( $is_beauty ) {
+            $this->_debug[] = 'Beauty mode: using variation-aware fallback renderer';
         } else {
             $this->_debug[] = 'No listing template set or no product IDs';
         }
 
-        // Build basic product data as fallback
+        // Build product data (fallback renderer and email handler both use this).
         $products_data = array();
-        foreach ( $top_ids as $pid ) {
+        foreach ( $top_keys as $key ) {
+            $info         = $key_map[ $key ];
+            $pid          = $info['pid'];
+            $variation_id = $info['variation_id'];
+
             $product = wc_get_product( $pid );
             if ( ! $product ) {
                 continue;
             }
 
-            // Match percentage: how close this product's raw score is to the
-            // theoretical maximum (rank-1 on every selected answer).
+            // Match percentage.
             $match_pct = $max_possible > 0
-                ? min( 100, round( ( $product_scores[ $pid ] / $max_possible ) * 100 ) )
+                ? min( 100, round( ( $product_scores[ $key ] / $max_possible ) * 100 ) )
                 : 0;
 
-            // Deduplicate answer reasons per question (keep one reason per question).
+            // Deduplicate answer reasons per question.
             $reasons = array();
             $seen_q  = array();
-            if ( ! empty( $product_answers[ $pid ] ) ) {
-                foreach ( $product_answers[ $pid ] as $r ) {
+            if ( ! empty( $product_answers[ $key ] ) ) {
+                foreach ( $product_answers[ $key ] as $r ) {
                     if ( in_array( $r['qi'], $seen_q, true ) ) {
                         continue;
                     }
@@ -271,18 +352,48 @@ class PF_Ajax {
                 }
             }
 
-            $products_data[] = array(
+            $item = array(
                 'id'                => $pid,
                 'name'              => $product->get_name(),
                 'price'             => $product->get_price_html(),
                 'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'large' ),
                 'permalink'         => $product->get_permalink(),
-                'score'             => $product_scores[ $pid ],
+                'score'             => $product_scores[ $key ],
                 'match_pct'         => $match_pct,
-                'questions_matched' => count( $product_questions[ $pid ] ?? array() ),
+                'questions_matched' => count( $product_questions[ $key ] ?? array() ),
                 'total_questions'   => $total_answered,
                 'reasons'           => $reasons,
+                'variation_id'      => 0,
+                'is_variable'       => false,
             );
+
+            // In Beauty mode, overlay variation-specific data.
+            if ( $is_beauty && $variation_id ) {
+                $variation = wc_get_product( $variation_id );
+                if ( $variation && $variation->is_type( 'variation' ) ) {
+                    $var_image = wp_get_attachment_image_url( $variation->get_image_id(), 'large' );
+
+                    // Build a descriptive name: "Parent — Shade Name"
+                    $attrs      = $variation->get_attributes();
+                    $attr_label = implode( ' / ', array_filter( array_values( $attrs ) ) );
+                    $var_name   = $product->get_name() . ( $attr_label ? ' — ' . $attr_label : '' );
+
+                    $item['variation_id'] = $variation_id;
+                    $item['is_variable']  = true;
+                    $item['name']         = $var_name;
+                    $item['price']        = $variation->get_price_html();
+                    $item['image']        = $var_image ?: $item['image'];
+                    $item['permalink']    = $variation->get_permalink();
+
+                    // Include variation attributes for add-to-cart.
+                    $item['variation_attributes'] = array();
+                    foreach ( $attrs as $attr_key => $attr_val ) {
+                        $item['variation_attributes'][ 'attribute_' . $attr_key ] = $attr_val;
+                    }
+                }
+            }
+
+            $products_data[] = $item;
         }
 
         // Capture any stray output that leaked during rendering (e.g.

@@ -178,6 +178,85 @@
         return false;
     });
 
+    /* ── Beauty mode: add specific variation from fallback results ── */
+
+    $(document).on('click', '.pf-atc-variation-btn', function (e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var $btn = $(this);
+
+        if ($btn.hasClass('loading') || $btn.hasClass('added')) {
+            return false;
+        }
+
+        var productId   = $btn.data('product_id');
+        var variationId = $btn.data('variation_id');
+
+        if (!productId || !variationId) {
+            console.warn('[PF ATC] Missing product_id or variation_id on beauty button');
+            return false;
+        }
+
+        var postData = {
+            product_id:   productId,
+            variation_id: variationId,
+            quantity:     1
+        };
+
+        // Collect variation attributes from data attrs.
+        var allData = $btn.data();
+        $.each(allData, function (key, value) {
+            if (key.indexOf('attribute_') === 0) {
+                postData[key] = value;
+            }
+        });
+
+        console.log('[PF ATC] Beauty mode: adding variation to cart:', postData);
+
+        $btn.addClass('loading').text('Adding…');
+
+        var ajaxUrl = (typeof pfAddToCart !== 'undefined' && pfAddToCart.ajax_url)
+            ? pfAddToCart.ajax_url
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.ajax_url)
+                ? pfFrontend.ajax_url
+                : '/wp-admin/admin-ajax.php';
+
+        var nonce = (typeof pfAddToCart !== 'undefined' && pfAddToCart.nonce)
+            ? pfAddToCart.nonce
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.nonce)
+                ? pfFrontend.nonce
+                : '';
+
+        postData.action = 'pf_add_to_cart_variable';
+        postData.nonce  = nonce;
+
+        $.post(ajaxUrl, postData, function (response) {
+            $btn.removeClass('loading');
+
+            if (!response || response.success === false) {
+                console.warn('[PF ATC] Beauty add to cart failed:', response);
+                $btn.text(pfFrontend.i18n.add_to_cart || 'Add to Cart');
+                return;
+            }
+
+            $btn.addClass('added').text('Added!');
+
+            var fragments = response.fragments || (response.data && response.data.fragments);
+            var cartHash  = response.cart_hash || (response.data && response.data.cart_hash);
+
+            $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
+            $(document.body).trigger('wc_fragment_refresh');
+
+            console.log('[PF ATC] Beauty mode: added variation', variationId, 'to cart');
+        }).fail(function (jqXHR, textStatus) {
+            $btn.removeClass('loading').text(pfFrontend.i18n.add_to_cart || 'Add to Cart');
+            console.error('[PF ATC] Beauty AJAX add to cart failed:', textStatus);
+        });
+
+        return false;
+    });
+
     /* ── Prevent clicks on disabled buttons ── */
 
     $(document).on('click', '.pf-atc-btn.pf-atc-btn--disabled', function (e) {

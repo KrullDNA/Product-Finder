@@ -98,6 +98,7 @@ class PF_Frontend {
                 'your_results' => __( 'Your Recommended Products', 'product-finder' ),
                 'start_over'   => __( 'Start Over', 'product-finder' ),
                 'complete'     => __( 'Complete', 'product-finder' ),
+                'add_to_cart'  => __( 'Add to Cart', 'product-finder' ),
             ),
         ) );
 

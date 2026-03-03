@@ -11,7 +11,73 @@
         initExistingIndices();
         initSortable();
         bindEvents();
+        applyFinderType( getFinderType() );
     });
+
+    /**
+     * Read the currently selected finder type from the radio buttons.
+     * Falls back to the value passed from PHP via pfAdmin.finder_type.
+     */
+    function getFinderType() {
+        var checked = $('input[name="pf_options[finder_type]"]:checked').val();
+        return checked || pfAdmin.finder_type || 'cosmeceuticals';
+    }
+
+    /**
+     * Show or hide all variation pickers based on finder type.
+     * In "beauty" mode, also load variations for any product rows
+     * that don't have their dropdown populated yet.
+     */
+    function applyFinderType( type ) {
+        if ( type === 'beauty' ) {
+            $('.pf-variation-picker').show();
+            // Load variations for existing product rows that need them.
+            $('.pf-product-row').each(function () {
+                var $row = $(this);
+                var $select = $row.find('.pf-variation-select');
+                // Only fetch if the select has 1 or fewer options (the placeholder).
+                if ( $select.find('option').length <= 1 || ( $select.find('option').length === 2 && $select.data('current') ) ) {
+                    var productId = $row.find('.pf-product-id').val();
+                    if ( productId ) {
+                        loadVariationsForRow( $row, productId );
+                    }
+                }
+            });
+        } else {
+            $('.pf-variation-picker').hide();
+        }
+    }
+
+    /**
+     * Fetch variations for a product and populate the select dropdown.
+     */
+    function loadVariationsForRow( $row, productId ) {
+        var $select = $row.find('.pf-variation-select');
+        var currentVariation = $row.find('.pf-variation-id').val();
+
+        $select.empty().append('<option value="">' + pfAdmin.i18n.loading_variations + '</option>');
+
+        $.ajax({
+            url: pfAdmin.ajax_url,
+            data: {
+                action: 'pf_get_variations',
+                nonce: pfAdmin.nonce,
+                product_id: productId
+            },
+            success: function (data) {
+                $select.empty().append('<option value="">' + pfAdmin.i18n.select_variation + '</option>');
+
+                if ( data && data.length ) {
+                    $.each(data, function (_, v) {
+                        var sel = ( String(v.id) === String(currentVariation) ) ? ' selected' : '';
+                        $select.append('<option value="' + v.id + '"' + sel + '>' + escHtml(v.text) + (v.price ? ' – ' + v.price : '') + '</option>');
+                    });
+                } else {
+                    $select.empty().append('<option value="">' + pfAdmin.i18n.no_variations + '</option>');
+                }
+            }
+        });
+    }
 
     function initExistingIndices() {
         // Find the highest existing indices so new items don't collide
@@ -61,6 +127,17 @@
     /* ───────────── Events ───────────── */
 
     function bindEvents() {
+        // Finder type toggle
+        $(document).on('change', 'input[name="pf_options[finder_type]"]', function () {
+            applyFinderType( $(this).val() );
+        });
+
+        // Variation select change – update hidden input
+        $(document).on('change', '.pf-variation-select', function () {
+            var $row = $(this).closest('.pf-product-row');
+            $row.find('.pf-variation-id').val( $(this).val() );
+        });
+
         // Add question
         $('#pf-add-question').on('click', addQuestion);
 
@@ -249,10 +326,17 @@
         var $row = $(html);
         $row.find('.pf-product-id').val(prodId);
         $row.find('.pf-product-name').text(prodName);
+        $row.attr('data-product-id', prodId);
 
         $wrap.find('.pf-products-list').append($row);
         $wrap.find('.pf-product-search').val('');
         $wrap.find('.pf-product-search-results').hide().empty();
+
+        // If Beauty mode, show variation picker and load variations.
+        if ( getFinderType() === 'beauty' ) {
+            $row.find('.pf-variation-picker').show();
+            loadVariationsForRow( $row, prodId );
+        }
     }
 
     function removeProduct() {
