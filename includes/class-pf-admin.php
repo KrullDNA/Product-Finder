@@ -344,16 +344,15 @@ class PF_Admin {
                         <option value="<?php echo esc_attr( $prod['variation_id'] ); ?>" selected><?php echo esc_html( $variation_name ); ?></option>
                     <?php endif; ?>
                 </select>
-                <?php if ( $prod['variation_id'] && $variation_name ) : ?>
-                    <span class="pf-variation-name"><?php echo esc_html( $variation_name ); ?></span>
-                <?php endif; ?>
             </div>
             <label class="pf-product-category-label"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
                 <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
                     <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
                     <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
                     <option value="concealer" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
-                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip / Lip & Cheek', 'product-finder' ); ?></option>
+                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
+                    <option value="cheek" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
+                    <option value="lip_cheek" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
                     <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
                 </select>
             </label>
@@ -421,7 +420,7 @@ class PF_Admin {
                         'products'    => array(),
                     );
                     if ( ! empty( $a['products'] ) && is_array( $a['products'] ) ) {
-                        $valid_categories = array( '', 'base', 'concealer', 'lip', 'eye' );
+                        $valid_categories = array( '', 'base', 'concealer', 'lip', 'cheek', 'lip_cheek', 'eye' );
                         foreach ( $a['products'] as $p ) {
                             $cat = sanitize_key( $p['result_category'] ?? '' );
                             if ( ! in_array( $cat, $valid_categories, true ) ) {

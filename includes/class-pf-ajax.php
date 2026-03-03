@@ -14,6 +14,7 @@ class PF_Ajax {
      * specific variation that was scored by the finder.
      */
     private static $matched_variations = array();
+    private static $matched_categories = array();
 
     /**
      * Get the matched variation ID for a given parent product.
@@ -21,6 +22,14 @@ class PF_Ajax {
      */
     public static function get_matched_variation( $parent_id ) {
         return self::$matched_variations[ (int) $parent_id ] ?? 0;
+    }
+
+    /**
+     * Get the result category label for a given parent product.
+     * Returns empty string if no category was assigned.
+     */
+    public static function get_matched_category( $parent_id ) {
+        return self::$matched_categories[ (int) $parent_id ] ?? '';
     }
 
     public function __construct() {
@@ -311,6 +320,13 @@ class PF_Ajax {
         // When products have a result_category assigned, only show the
         // single best-scoring product per category.  Products without a
         // category are included normally up to the results limit.
+        //
+        // Lip / Cheek intelligence:
+        // Three categories compete for the lip+cheek slot(s):
+        //   "lip", "cheek", and "lip_cheek" (combined).
+        // If the best individual lip OR cheek product scores higher than
+        // the best lip_cheek product, we split into two separate results
+        // (one lip, one cheek).  Otherwise we show the single lip_cheek.
         $sorted_keys = array_keys( $composite_scores );
         $has_categories = false;
         foreach ( $sorted_keys as $k ) {
@@ -321,12 +337,48 @@ class PF_Ajax {
         }
 
         if ( $has_categories ) {
+            // First pass: find the best score per category.
+            $best_by_cat = array(); // cat => { key, score }
+            foreach ( $sorted_keys as $k ) {
+                $cat = $key_map[ $k ]['result_category'] ?? '';
+                if ( $cat && ! isset( $best_by_cat[ $cat ] ) ) {
+                    $best_by_cat[ $cat ] = array(
+                        'key'   => $k,
+                        'score' => $composite_scores[ $k ],
+                    );
+                }
+            }
+
+            // Lip / Cheek vs Lip & Cheek decision.
+            $lip_score       = isset( $best_by_cat['lip'] )       ? $best_by_cat['lip']['score']       : 0;
+            $cheek_score     = isset( $best_by_cat['cheek'] )     ? $best_by_cat['cheek']['score']     : 0;
+            $lip_cheek_score = isset( $best_by_cat['lip_cheek'] ) ? $best_by_cat['lip_cheek']['score'] : 0;
+
+            // Use split categories when either individual lip or cheek
+            // scores higher than the combined lip_cheek product.
+            $use_split = ( $lip_score > $lip_cheek_score || $cheek_score > $lip_cheek_score )
+                         && $lip_score > 0 && $cheek_score > 0;
+
+            // Decide which lip/cheek categories to exclude.
+            $skip_cats = array();
+            if ( $use_split ) {
+                $skip_cats['lip_cheek'] = true; // Exclude combined.
+            } else {
+                if ( $lip_cheek_score > 0 ) {
+                    $skip_cats['lip']   = true;  // Exclude individual.
+                    $skip_cats['cheek'] = true;
+                }
+            }
+
+            // Second pass: build top_keys, one per category.
             $top_keys        = array();
             $seen_categories = array();
             foreach ( $sorted_keys as $k ) {
                 $cat = $key_map[ $k ]['result_category'] ?? '';
                 if ( $cat ) {
-                    // Only take the highest-scoring product per category.
+                    if ( isset( $skip_cats[ $cat ] ) ) {
+                        continue;
+                    }
                     if ( isset( $seen_categories[ $cat ] ) ) {
                         continue;
                     }
@@ -360,15 +412,21 @@ class PF_Ajax {
             $this->_debug[] = 'finder_type=beauty';
         }
 
-        // Build parent → matched variation mapping so widgets inside the
-        // CrocoBlock listing can show the specific variation that scored.
+        // Build parent → matched variation / category mappings so widgets
+        // inside the CrocoBlock listing can show the specific variation
+        // and category label that scored.
         self::$matched_variations = array();
+        self::$matched_categories = array();
         foreach ( $top_keys as $key ) {
             $info = $key_map[ $key ];
             $vid  = $info['variation_id'];
             $pid  = $info['pid'];
+            $cat  = $info['result_category'] ?? '';
             if ( $vid && ! isset( self::$matched_variations[ $pid ] ) ) {
                 self::$matched_variations[ $pid ] = $vid;
+            }
+            if ( $cat && ! isset( self::$matched_categories[ $pid ] ) ) {
+                self::$matched_categories[ $pid ] = $cat;
             }
         }
 

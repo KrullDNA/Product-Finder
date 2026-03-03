@@ -962,3 +962,16 @@ i.pf-loading-icon {
     object-fit: cover;
     transition: opacity 0.25s ease;
 }
+
+/* ── PF Category Label ── */
+
+.pf-cl-wrap {
+    display: block;
+}
+
+.pf-cl-label {
+    display: inline-block;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}

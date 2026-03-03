@@ -43,6 +43,9 @@ class PF_Elementor {
 
         require_once PF_PLUGIN_DIR . 'elementor/class-pf-product-image-widget.php';
         $widgets_manager->register( new PF_Product_Image_Widget() );
+
+        require_once PF_PLUGIN_DIR . 'elementor/class-pf-category-label-widget.php';
+        $widgets_manager->register( new PF_Category_Label_Widget() );
     }
 }
 
