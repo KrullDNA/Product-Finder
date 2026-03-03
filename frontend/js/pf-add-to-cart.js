@@ -359,4 +359,12 @@
         $btn.data('quantity', qty);
     });
 
+    // Shade Cart quantity sync.
+    $(document).on('change input', '.pf-sc-qty', function () {
+        var qty = parseInt($(this).val(), 10) || 1;
+        var $btn = $(this).siblings('.pf-shade-atc-btn');
+        $btn.attr('data-quantity', qty);
+        $btn.data('quantity', qty);
+    });
+
 })(jQuery);

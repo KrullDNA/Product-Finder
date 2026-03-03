@@ -75,6 +75,14 @@ class PF_Shade_Cart_Widget extends Widget_Base {
             'label_block' => true,
         ) );
 
+        $this->add_control( 'image_meta_key', array(
+            'label'       => __( 'Image Meta Key', 'product-finder' ),
+            'type'        => Controls_Manager::TEXT,
+            'default'     => 'product_attribute_image',
+            'description' => __( 'Term meta key where the swatch image URL or attachment ID is stored. Takes priority over hex colour (FiF VSE uses product_attribute_image).', 'product-finder' ),
+            'label_block' => true,
+        ) );
+
         $this->add_control( 'fallback_color', array(
             'label'   => __( 'Fallback Circle Colour', 'product-finder' ),
             'type'    => Controls_Manager::COLOR,
@@ -101,6 +109,14 @@ class PF_Shade_Cart_Widget extends Widget_Base {
             'label'   => __( 'Price / Text Separator', 'product-finder' ),
             'type'    => Controls_Manager::TEXT,
             'default' => '|',
+        ) );
+
+        $this->add_control( 'show_quantity', array(
+            'label'        => __( 'Quantity Input', 'product-finder' ),
+            'type'         => Controls_Manager::SWITCHER,
+            'label_on'     => __( 'Show', 'product-finder' ),
+            'label_off'    => __( 'Hide', 'product-finder' ),
+            'default'      => '',
         ) );
 
         $this->add_responsive_control( 'align', array(
@@ -400,6 +416,82 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         ) );
 
         $this->end_controls_section();
+
+        /* ── Style: Quantity Input ── */
+
+        $this->start_controls_section( 'section_style_quantity', array(
+            'label'     => __( 'Quantity Input', 'product-finder' ),
+            'tab'       => Controls_Manager::TAB_STYLE,
+            'condition' => array( 'show_quantity' => 'yes' ),
+        ) );
+
+        $this->add_responsive_control( 'qty_width', array(
+            'label'      => __( 'Width', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 30, 'max' => 120 ) ),
+            'default'    => array( 'size' => 60, 'unit' => 'px' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-sc-qty' => 'width: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'qty_height', array(
+            'label'      => __( 'Height', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 20, 'max' => 80 ) ),
+            'default'    => array( 'size' => 40, 'unit' => 'px' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-sc-qty' => 'height: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'qty_gap', array(
+            'label'      => __( 'Gap (Qty / Button)', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 30 ) ),
+            'default'    => array( 'size' => 8, 'unit' => 'px' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-sc-inner' => 'gap: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'qty_typography',
+            'selector' => '{{WRAPPER}} .pf-sc-qty',
+        ) );
+
+        $this->add_control( 'qty_text_color', array(
+            'label'     => __( 'Text Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-sc-qty' => 'color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'qty_bg_color', array(
+            'label'     => __( 'Background', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-sc-qty' => 'background-color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'qty_border_color', array(
+            'label'     => __( 'Border Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-sc-qty' => 'border-color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'qty_border_radius', array(
+            'label'      => __( 'Border Radius', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 20 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-sc-qty' => 'border-radius: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->end_controls_section();
     }
 
     /* ═══════════════════════════════════════
@@ -428,11 +520,13 @@ class PF_Shade_Cart_Widget extends Widget_Base {
             return;
         }
 
-        $settings   = $this->get_settings_for_display();
-        $product_id = $the_product->get_id();
-        $shade_attr = sanitize_title( $settings['shade_attribute'] ?: 'pa_shade' );
-        $meta_key   = sanitize_key( $settings['color_meta_key'] ?: 'product_attribute_color' );
-        $fallback   = $settings['fallback_color'] ?: '#cccccc';
+        $settings       = $this->get_settings_for_display();
+        $product_id     = $the_product->get_id();
+        $shade_attr     = sanitize_title( $settings['shade_attribute'] ?: 'pa_shade' );
+        $meta_key       = sanitize_key( $settings['color_meta_key'] ?: 'product_attribute_color' );
+        $image_meta_key = $settings['image_meta_key'] ?: 'product_attribute_image';
+        $fallback       = $settings['fallback_color'] ?: '#cccccc';
+        $show_qty       = 'yes' === ( $settings['show_quantity'] ?? '' );
 
         // Resolve variation data.
         $variation      = null;
@@ -440,6 +534,7 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         $shade_slug     = '';
         $shade_label    = '';
         $shade_hex      = $fallback;
+        $shade_image    = '';  // URL — takes priority over hex colour.
         $price_html     = $the_product->get_price_html();
         $variation_attrs = array();
 
@@ -532,33 +627,63 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                         if ( $term && ! is_wp_error( $term ) ) {
                             $shade_label = $term->name;
 
-                            // Try to get the swatch colour from term meta.
-                            $color = get_term_meta( $term->term_id, $meta_key, true );
-                            if ( ! $color ) {
-                                // Fallback meta keys used by common swatch plugins.
-                                foreach ( array( 'product_attribute_color', 'color', '_color', 'attribute_swatch_color' ) as $alt_key ) {
-                                    if ( $alt_key === $meta_key ) {
-                                        continue;
-                                    }
-                                    $color = get_term_meta( $term->term_id, $alt_key, true );
-                                    if ( $color ) {
+                            // ── Image swatch (takes priority over hex) ──
+                            // Check the configured image meta key first,
+                            // then common FiF VSE / swatch plugin keys.
+                            $image_keys = array_unique( array_filter( array(
+                                $image_meta_key,
+                                'product_attribute_image',
+                                'image',
+                                '_image',
+                                'swatch_image',
+                                'attribute_swatch_image',
+                            ) ) );
+                            foreach ( $image_keys as $img_key ) {
+                                $img_val = get_term_meta( $term->term_id, $img_key, true );
+                                if ( ! $img_val ) {
+                                    continue;
+                                }
+                                // Value can be an attachment ID or a URL.
+                                if ( is_numeric( $img_val ) ) {
+                                    $url = wp_get_attachment_image_url( (int) $img_val, 'thumbnail' );
+                                    if ( $url ) {
+                                        $shade_image = $url;
                                         break;
                                     }
+                                } elseif ( filter_var( $img_val, FILTER_VALIDATE_URL ) ) {
+                                    $shade_image = $img_val;
+                                    break;
                                 }
                             }
-                            // If still no colour, try ALL term meta for any hex value.
-                            if ( ! $color ) {
-                                $all_meta = get_term_meta( $term->term_id );
-                                foreach ( $all_meta as $mk => $mv ) {
-                                    $val = is_array( $mv ) ? ( $mv[0] ?? '' ) : $mv;
-                                    if ( preg_match( '/^#[0-9a-fA-F]{3,8}$/', $val ) ) {
-                                        $color = $val;
-                                        break;
+
+                            // ── Hex colour (fallback when no image) ──
+                            if ( ! $shade_image ) {
+                                $color = get_term_meta( $term->term_id, $meta_key, true );
+                                if ( ! $color ) {
+                                    foreach ( array( 'product_attribute_color', 'color', '_color', 'attribute_swatch_color' ) as $alt_key ) {
+                                        if ( $alt_key === $meta_key ) {
+                                            continue;
+                                        }
+                                        $color = get_term_meta( $term->term_id, $alt_key, true );
+                                        if ( $color ) {
+                                            break;
+                                        }
                                     }
                                 }
-                            }
-                            if ( $color ) {
-                                $shade_hex = $color;
+                                // Try ALL term meta for any hex value.
+                                if ( ! $color ) {
+                                    $all_meta = get_term_meta( $term->term_id );
+                                    foreach ( $all_meta as $mk => $mv ) {
+                                        $val = is_array( $mv ) ? ( $mv[0] ?? '' ) : $mv;
+                                        if ( preg_match( '/^#[0-9a-fA-F]{3,8}$/', $val ) ) {
+                                            $color = $val;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if ( $color ) {
+                                    $shade_hex = $color;
+                                }
                             }
                         }
                     }
@@ -595,13 +720,14 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         // Debug comment visible in browser inspector.
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             printf(
-                '<!-- PF-SC debug: pid=%d vid=%d shade_attr="%s" shade_slug="%s" shade_label="%s" shade_hex="%s" attrs=%s -->',
+                '<!-- PF-SC debug: pid=%d vid=%d shade_attr="%s" shade_slug="%s" shade_label="%s" shade_hex="%s" shade_image="%s" attrs=%s -->',
                 $product_id,
                 $variation_id,
                 esc_html( $shade_attr ),
                 esc_html( $shade_slug ),
                 esc_html( $shade_label ),
                 esc_html( $shade_hex ),
+                esc_html( $shade_image ),
                 esc_html( wp_json_encode( $variation_attrs ) )
             );
         }
@@ -609,10 +735,20 @@ class PF_Shade_Cart_Widget extends Widget_Base {
         // Shade row (only if we have shade data).
         if ( $shade_label ) {
             echo '<div class="pf-sc-shade-row">';
-            printf(
-                '<span class="pf-sc-circle" style="background-color:%s;"></span>',
-                esc_attr( $shade_hex )
-            );
+
+            // Image swatch takes priority over hex colour.
+            if ( $shade_image ) {
+                printf(
+                    '<span class="pf-sc-circle fif-vse-preview" style="background-image:url(%s);background-size:cover;background-position:center;"></span>',
+                    esc_url( $shade_image )
+                );
+            } else {
+                printf(
+                    '<span class="pf-sc-circle" style="background-color:%s;"></span>',
+                    esc_attr( $shade_hex )
+                );
+            }
+
             printf(
                 '<span class="pf-sc-label">%s</span>',
                 esc_html( $shade_label )
@@ -620,7 +756,7 @@ class PF_Shade_Cart_Widget extends Widget_Base {
             echo '</div>';
         }
 
-        // Button.
+        // Button row (with optional quantity input).
         if ( $is_purchasable ) {
             $btn_classes = 'pf-sc-btn pf-shade-atc-btn';
 
@@ -632,7 +768,6 @@ class PF_Shade_Cart_Widget extends Widget_Base {
 
             if ( $variation_id ) {
                 $data_attrs .= sprintf( ' data-variation_id="%d"', $variation_id );
-                // Include variation attributes so the AJAX handler can validate.
                 foreach ( $variation_attrs as $attr_key => $attr_val ) {
                     $data_attrs .= sprintf(
                         ' data-attribute_%s="%s"',
@@ -641,12 +776,19 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                     );
                 }
             } else {
-                // Simple product: use WC's built-in AJAX add-to-cart.
                 $btn_classes .= ' add_to_cart_button ajax_add_to_cart';
                 $data_attrs  .= sprintf(
                     ' data-product_sku="%s"',
                     esc_attr( $the_product->get_sku() )
                 );
+            }
+
+            // Wrap qty + button in a flex row.
+            echo '<div class="pf-sc-inner">';
+
+            // Quantity input.
+            if ( $show_qty ) {
+                echo '<input type="number" class="pf-sc-qty" value="1" min="1" step="1" inputmode="numeric">';
             }
 
             printf(
@@ -656,15 +798,14 @@ class PF_Shade_Cart_Widget extends Widget_Base {
                 $data_attrs
             );
 
-            // Price.
             echo '<span class="pf-sc-btn-price">' . $price_html . '</span>';
             printf( '<span class="pf-sc-btn-sep">%s</span>', esc_html( $separator ) );
             printf( '<span class="pf-sc-btn-text">%s</span>', esc_html( $button_text ) );
             echo $icon_html;
-
             echo '</a>';
+
+            echo '</div>'; // .pf-sc-inner
         } else {
-            // Out of stock / not purchasable.
             echo '<span class="pf-sc-btn pf-sc-btn--disabled">';
             echo '<span class="pf-sc-btn-text">' . esc_html__( 'Out of Stock', 'product-finder' ) . '</span>';
             echo '</span>';

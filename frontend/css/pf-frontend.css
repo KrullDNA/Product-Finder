@@ -803,10 +803,40 @@ i.pf-loading-icon {
     box-sizing: border-box;
 }
 
+.pf-sc-circle.fif-vse-preview {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
 .pf-sc-label {
     font-size: 14px;
     font-weight: 500;
     color: #333;
+}
+
+.pf-sc-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pf-sc-qty {
+    width: 60px;
+    height: 40px;
+    padding: 4px 8px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    -moz-appearance: textfield;
+}
+
+.pf-sc-qty::-webkit-inner-spin-button,
+.pf-sc-qty::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .pf-sc-btn {
