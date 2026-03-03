@@ -796,17 +796,17 @@ i.pf-loading-icon {
 .pf-sc-circle {
     width: 24px;
     height: 24px;
-    border-radius: 50%;
+    border-radius: 50% !important;
     flex-shrink: 0;
-    display: inline-block;
+    display: block;
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: hidden !important;
 }
 
 .pf-sc-circle.fif-vse-preview {
-    background-size: cover;
-    background-position: center;
+    background-size: cover !important;
+    background-position: center !important;
     background-repeat: no-repeat;
 }
 
