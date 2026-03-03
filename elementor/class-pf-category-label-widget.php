@@ -174,13 +174,14 @@ class PF_Category_Label_Widget extends Widget_Base {
             ),
         ) );
 
-        $this->add_control( 'label_rotate', array(
-            'label'      => __( 'Rotation (deg)', 'product-finder' ),
-            'type'       => Controls_Manager::SLIDER,
-            'range'      => array( 'px' => array( 'min' => -180, 'max' => 180 ) ),
-            'default'    => array( 'size' => 0, 'unit' => 'px' ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-cl-label' => 'transform: rotate({{SIZE}}deg);',
+        $this->add_control( 'label_orientation', array(
+            'label'   => __( 'Orientation', 'product-finder' ),
+            'type'    => Controls_Manager::SELECT,
+            'default' => 'horizontal',
+            'options' => array(
+                'horizontal' => __( 'Horizontal', 'product-finder' ),
+                'vertical'   => __( 'Vertical (top to bottom)', 'product-finder' ),
+                'vertical_r' => __( 'Vertical (bottom to top)', 'product-finder' ),
             ),
         ) );
 
@@ -229,10 +230,19 @@ class PF_Category_Label_Widget extends Widget_Base {
             $tag = 'div';
         }
 
+        $orientation = $settings['label_orientation'] ?? 'horizontal';
+        $orient_class = '';
+        if ( 'vertical' === $orientation ) {
+            $orient_class = ' pf-cl--vertical';
+        } elseif ( 'vertical_r' === $orientation ) {
+            $orient_class = ' pf-cl--vertical-r';
+        }
+
         printf(
-            '<div class="pf-cl-wrap"><%1$s class="pf-cl-label">%2$s</%1$s></div>',
+            '<div class="pf-cl-wrap%3$s"><%1$s class="pf-cl-label">%2$s</%1$s></div>',
             $tag,
-            esc_html( $label )
+            esc_html( $label ),
+            $orient_class
         );
     }
 
@@ -261,10 +271,19 @@ class PF_Category_Label_Widget extends Widget_Base {
             $tag = 'div';
         }
 
+        $orientation = $settings['label_orientation'] ?? 'horizontal';
+        $orient_class = '';
+        if ( 'vertical' === $orientation ) {
+            $orient_class = ' pf-cl--vertical';
+        } elseif ( 'vertical_r' === $orientation ) {
+            $orient_class = ' pf-cl--vertical-r';
+        }
+
         printf(
-            '<div class="pf-cl-wrap"><%1$s class="pf-cl-label">%2$s</%1$s></div>',
+            '<div class="pf-cl-wrap%3$s"><%1$s class="pf-cl-label">%2$s</%1$s></div>',
             $tag,
-            esc_html( $settings['label_base'] ?: 'BASE' )
+            esc_html( $settings['label_base'] ?: 'BASE' ),
+            $orient_class
         );
     }
 
@@ -273,8 +292,12 @@ class PF_Category_Label_Widget extends Widget_Base {
         <#
         var tag   = settings.html_tag || 'div';
         var label = settings.label_base || 'BASE';
+        var orient = settings.label_orientation || 'horizontal';
+        var cls = 'pf-cl-wrap';
+        if ( orient === 'vertical' )   cls += ' pf-cl--vertical';
+        if ( orient === 'vertical_r' ) cls += ' pf-cl--vertical-r';
         #>
-        <div class="pf-cl-wrap">
+        <div class="{{{ cls }}}">
             <{{{ tag }}} class="pf-cl-label">{{{ label }}}</{{{ tag }}}>
         </div>
         <?php

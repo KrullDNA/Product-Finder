@@ -966,7 +966,7 @@ i.pf-loading-icon {
 /* ── PF Category Label ── */
 
 .pf-cl-wrap {
-    display: block;
+    display: inline-block;
 }
 
 .pf-cl-label {
@@ -974,4 +974,19 @@ i.pf-loading-icon {
     font-weight: 600;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    margin: 0;
+    white-space: nowrap;
+}
+
+/* Vertical: text reads top-to-bottom */
+.pf-cl--vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+}
+
+/* Vertical reversed: text reads bottom-to-top */
+.pf-cl--vertical-r {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
 }
