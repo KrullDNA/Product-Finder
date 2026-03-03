@@ -315,9 +315,10 @@ class PF_Admin {
 
     private function render_product_row_template( $qi, $ai, $pi, $prod ) {
         $prod = wp_parse_args( $prod, array(
-            'id'           => '',
-            'variation_id' => '',
-            'rank'         => 1,
+            'id'              => '',
+            'variation_id'    => '',
+            'rank'            => 1,
+            'result_category' => '',
         ) );
         $name_prefix = "pf_questions[{$qi}][answers][{$ai}][products][{$pi}]";
         $product_name = $prod['id'] ? get_the_title( $prod['id'] ) : '{{data.name}}';
@@ -347,6 +348,15 @@ class PF_Admin {
                     <span class="pf-variation-name"><?php echo esc_html( $variation_name ); ?></span>
                 <?php endif; ?>
             </div>
+            <label class="pf-product-category-label"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
+                <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
+                    <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
+                    <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
+                    <option value="concealer" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
+                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip / Lip & Cheek', 'product-finder' ); ?></option>
+                    <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                </select>
+            </label>
             <label class="pf-product-rank-label"><?php esc_html_e( 'Rank:', 'product-finder' ); ?>
                 <input type="number" name="<?php echo esc_attr( $name_prefix ); ?>[rank]" value="<?php echo esc_attr( $prod['rank'] ); ?>" min="1" class="pf-product-rank small-text">
             </label>
@@ -411,11 +421,17 @@ class PF_Admin {
                         'products'    => array(),
                     );
                     if ( ! empty( $a['products'] ) && is_array( $a['products'] ) ) {
+                        $valid_categories = array( '', 'base', 'concealer', 'lip', 'eye' );
                         foreach ( $a['products'] as $p ) {
+                            $cat = sanitize_key( $p['result_category'] ?? '' );
+                            if ( ! in_array( $cat, $valid_categories, true ) ) {
+                                $cat = '';
+                            }
                             $answer['products'][] = array(
-                                'id'           => absint( $p['id'] ?? 0 ),
-                                'variation_id' => absint( $p['variation_id'] ?? 0 ),
-                                'rank'         => absint( $p['rank'] ?? 1 ),
+                                'id'              => absint( $p['id'] ?? 0 ),
+                                'variation_id'    => absint( $p['variation_id'] ?? 0 ),
+                                'rank'            => absint( $p['rank'] ?? 1 ),
+                                'result_category' => $cat,
                             );
                         }
                     }

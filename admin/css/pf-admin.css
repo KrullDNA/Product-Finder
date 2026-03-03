@@ -232,6 +232,16 @@
     font-weight: 500;
 }
 
+.pf-product-category-label {
+    font-size: 12px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.pf-product-category {
+    font-size: 12px;
+}
+
 .pf-product-rank-label {
     font-size: 12px;
     color: #646970;

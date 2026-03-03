@@ -242,9 +242,10 @@ class PF_Ajax {
                 $max_possible += $max_rank;
 
                 foreach ( $a['products'] as $p ) {
-                    $pid          = absint( $p['id'] );
-                    $variation_id = absint( $p['variation_id'] ?? 0 );
-                    $rank         = absint( $p['rank'] );
+                    $pid             = absint( $p['id'] );
+                    $variation_id    = absint( $p['variation_id'] ?? 0 );
+                    $rank            = absint( $p['rank'] );
+                    $result_category = sanitize_key( $p['result_category'] ?? '' );
                     if ( ! $pid ) {
                         continue;
                     }
@@ -259,9 +260,14 @@ class PF_Ajax {
                         $product_questions[ $key ] = array();
                         $product_answers[ $key ]   = array();
                         $key_map[ $key ]           = array(
-                            'pid'          => $pid,
-                            'variation_id' => $variation_id,
+                            'pid'             => $pid,
+                            'variation_id'    => $variation_id,
+                            'result_category' => $result_category,
                         );
+                    }
+                    // Prefer a non-empty category if one is set across answers.
+                    if ( $result_category && empty( $key_map[ $key ]['result_category'] ) ) {
+                        $key_map[ $key ]['result_category'] = $result_category;
                     }
                     $product_scores[ $key ] += $score;
 
@@ -301,8 +307,40 @@ class PF_Ajax {
 
         arsort( $composite_scores );
 
-        // Limit results.
-        $top_keys = array_slice( array_keys( $composite_scores ), 0, (int) $options['num_results'] );
+        // ── Result selection: best-per-category filtering ──
+        // When products have a result_category assigned, only show the
+        // single best-scoring product per category.  Products without a
+        // category are included normally up to the results limit.
+        $sorted_keys = array_keys( $composite_scores );
+        $has_categories = false;
+        foreach ( $sorted_keys as $k ) {
+            if ( ! empty( $key_map[ $k ]['result_category'] ) ) {
+                $has_categories = true;
+                break;
+            }
+        }
+
+        if ( $has_categories ) {
+            $top_keys        = array();
+            $seen_categories = array();
+            foreach ( $sorted_keys as $k ) {
+                $cat = $key_map[ $k ]['result_category'] ?? '';
+                if ( $cat ) {
+                    // Only take the highest-scoring product per category.
+                    if ( isset( $seen_categories[ $cat ] ) ) {
+                        continue;
+                    }
+                    $seen_categories[ $cat ] = true;
+                }
+                $top_keys[] = $k;
+                if ( count( $top_keys ) >= (int) $options['num_results'] ) {
+                    break;
+                }
+            }
+        } else {
+            // No categories assigned — fall back to simple top-N.
+            $top_keys = array_slice( $sorted_keys, 0, (int) $options['num_results'] );
+        }
 
         // Extract parent product IDs for CrocoBlock listing rendering.
         $top_ids = array();
