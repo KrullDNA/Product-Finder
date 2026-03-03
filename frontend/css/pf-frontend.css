@@ -805,7 +805,7 @@ i.pf-loading-icon {
 }
 
 .pf-sc-circle.fif-vse-preview {
-    background-size: cover !important;
+    background-size: 142% !important;
     background-position: center !important;
     background-repeat: no-repeat;
 }
