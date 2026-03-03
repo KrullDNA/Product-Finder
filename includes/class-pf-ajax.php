@@ -307,17 +307,14 @@ class PF_Ajax {
             $this->_debug[] = 'finder_type=beauty';
         }
 
-        // If CrocoBlock listing template is set AND we're not in Beauty mode,
-        // render via JetEngine.  In Beauty mode we always use the fallback
-        // renderer since CrocoBlock listings show the parent product, not
-        // the specific variation image/price we need.
+        // If CrocoBlock listing template is set, render via JetEngine.
+        // Both Cosmeceuticals and Beauty modes use the same CrocoBlock
+        // template for visual consistency.
         $html = '';
-        if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) && ! $is_beauty ) {
+        if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) ) {
             $this->_debug[] = 'listing_template=' . $options['listing_template'] . ', product_ids=' . implode( ',', $top_ids );
             $html = $this->render_crocoblock_listing( $top_ids, $options );
             $this->_debug[] = 'final listing_html length=' . strlen( $html );
-        } else if ( $is_beauty ) {
-            $this->_debug[] = 'Beauty mode: using variation-aware fallback renderer';
         } else {
             $this->_debug[] = 'No listing template set or no product IDs';
         }
@@ -374,8 +371,24 @@ class PF_Ajax {
                     $var_image = wp_get_attachment_image_url( $variation->get_image_id(), 'large' );
 
                     // Build a descriptive name: "Parent — Shade Name"
-                    $attrs      = $variation->get_attributes();
-                    $attr_label = implode( ' / ', array_filter( array_values( $attrs ) ) );
+                    $attrs       = $variation->get_attributes();
+                    $attr_labels = array();
+                    foreach ( $attrs as $attr_name => $attr_value ) {
+                        if ( empty( $attr_value ) ) {
+                            continue;
+                        }
+                        // Taxonomy attributes store slugs; look up the term name.
+                        if ( taxonomy_exists( $attr_name ) ) {
+                            $term = get_term_by( 'slug', $attr_value, $attr_name );
+                            if ( $term && ! is_wp_error( $term ) ) {
+                                $attr_labels[] = $term->name;
+                                continue;
+                            }
+                        }
+                        // Custom text attribute – value is already human-readable.
+                        $attr_labels[] = $attr_value;
+                    }
+                    $attr_label = implode( ' / ', array_filter( $attr_labels ) );
                     $var_name   = $product->get_name() . ( $attr_label ? ' — ' . $attr_label : '' );
 
                     $item['variation_id'] = $variation_id;
