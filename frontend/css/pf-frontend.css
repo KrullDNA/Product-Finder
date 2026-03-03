@@ -779,3 +779,137 @@ i.pf-loading-icon {
 .pf-atc-price {
     margin-bottom: 6px;
 }
+
+/* === PF Shade Cart Widget === */
+
+.pf-sc-wrap {
+    line-height: 1.4;
+}
+
+.pf-sc-shade-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.pf-sc-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+}
+
+.pf-sc-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.pf-sc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    border-radius: 0;
+    background-color: #000000;
+    color: #ffffff;
+    transition: background-color 0.25s ease, color 0.25s ease, opacity 0.25s ease;
+    box-sizing: border-box;
+    letter-spacing: 0.05em;
+}
+
+.pf-sc-btn:hover {
+    background-color: #222;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.pf-sc-btn--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pf-sc-btn-price {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Strip WooCommerce del/ins styling inside the button */
+.pf-sc-btn-price del {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.pf-sc-btn-price ins {
+    text-decoration: none;
+}
+
+.pf-sc-btn-sep {
+    opacity: 0.5;
+    margin: 0 10px;
+    user-select: none;
+}
+
+.pf-sc-btn-text {
+    white-space: nowrap;
+}
+
+.pf-sc-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 6px;
+    line-height: 1;
+}
+
+.pf-sc-btn-icon i {
+    font-size: inherit;
+}
+
+.pf-sc-btn-icon svg {
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+}
+
+/* Loading / added states */
+.pf-sc-btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.pf-sc-btn.loading::after {
+    content: '';
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: middle;
+    animation: pf-atc-spin 0.6s linear infinite;
+}
+
+.pf-sc-btn.added {
+    pointer-events: none;
+}
+
+.pf-sc-btn.added::after {
+    content: '\2713';
+    margin-left: 8px;
+    animation: none;
+    border: none;
+    width: auto;
+    height: auto;
+}

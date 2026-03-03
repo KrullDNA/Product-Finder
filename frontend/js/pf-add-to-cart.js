@@ -257,6 +257,91 @@
         return false;
     });
 
+    /* ── Shade Cart widget: add specific variation to cart ── */
+
+    $(document).on('click', '.pf-shade-atc-btn', function (e) {
+        // Let WC's built-in handler manage simple products.
+        if ($(this).hasClass('ajax_add_to_cart')) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopImmediatePropagation();
+
+        var $btn = $(this);
+
+        if ($btn.hasClass('loading') || $btn.hasClass('added')) {
+            return false;
+        }
+
+        var productId   = $btn.data('product_id');
+        var variationId = $btn.data('variation_id');
+
+        if (!productId || !variationId) {
+            console.warn('[PF ATC] Shade Cart: missing product_id or variation_id');
+            return false;
+        }
+
+        var postData = {
+            product_id:   productId,
+            variation_id: variationId,
+            quantity:     parseInt($btn.data('quantity'), 10) || 1
+        };
+
+        // Collect variation attributes.
+        var allData = $btn.data();
+        $.each(allData, function (key, value) {
+            if (typeof key === 'string' && key.indexOf('attribute_') === 0) {
+                postData[key] = value;
+            }
+        });
+
+        console.log('[PF ATC] Shade Cart: adding to cart', postData);
+
+        // Preserve the button inner HTML so we can restore it.
+        var originalHtml = $btn.html();
+        $btn.addClass('loading');
+
+        var ajaxUrl = (typeof pfAddToCart !== 'undefined' && pfAddToCart.ajax_url)
+            ? pfAddToCart.ajax_url
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.ajax_url)
+                ? pfFrontend.ajax_url
+                : '/wp-admin/admin-ajax.php';
+
+        var nonce = (typeof pfAddToCart !== 'undefined' && pfAddToCart.nonce)
+            ? pfAddToCart.nonce
+            : (typeof pfFrontend !== 'undefined' && pfFrontend.nonce)
+                ? pfFrontend.nonce
+                : '';
+
+        postData.action = 'pf_add_to_cart_variable';
+        postData.nonce  = nonce;
+
+        $.post(ajaxUrl, postData, function (response) {
+            $btn.removeClass('loading');
+
+            if (!response || response.success === false) {
+                console.warn('[PF ATC] Shade Cart: add to cart failed', response);
+                return;
+            }
+
+            $btn.addClass('added');
+
+            var fragments = response.fragments || (response.data && response.data.fragments);
+            var cartHash  = response.cart_hash || (response.data && response.data.cart_hash);
+
+            $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
+            $(document.body).trigger('wc_fragment_refresh');
+
+            console.log('[PF ATC] Shade Cart: added variation', variationId);
+        }).fail(function (jqXHR, textStatus) {
+            $btn.removeClass('loading');
+            console.error('[PF ATC] Shade Cart: AJAX failed', textStatus);
+        });
+
+        return false;
+    });
+
     /* ── Prevent clicks on disabled buttons ── */
 
     $(document).on('click', '.pf-atc-btn.pf-atc-btn--disabled', function (e) {

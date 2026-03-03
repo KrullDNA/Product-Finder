@@ -37,6 +37,9 @@ class PF_Elementor {
 
         require_once PF_PLUGIN_DIR . 'elementor/class-pf-add-to-cart-widget.php';
         $widgets_manager->register( new PF_Add_To_Cart_Widget() );
+
+        require_once PF_PLUGIN_DIR . 'elementor/class-pf-shade-cart-widget.php';
+        $widgets_manager->register( new PF_Shade_Cart_Widget() );
     }
 }
 
