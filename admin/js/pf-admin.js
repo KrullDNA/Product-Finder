@@ -411,7 +411,9 @@
 
     function addFollowup() {
         var $answer = $(this).closest('.pf-answer');
-        $answer.find('.pf-followup-wrap').slideDown(200);
+        var $wrap   = $answer.find('.pf-followup-wrap');
+        console.log('[PF] addFollowup clicked', { answer: $answer.length, wrap: $wrap.length, wrapDisplay: $wrap.css('display') });
+        $wrap.slideDown(200);
         $answer.find('.pf-followup-add').hide();
     }
 
