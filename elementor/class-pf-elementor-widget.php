@@ -1747,9 +1747,21 @@ class PF_Elementor_Widget extends Widget_Base {
                 . ( $tm['left'] ?? 0 ) . $u . '}';
         }
 
-        if ( ! empty( $rules ) ) {
-            echo '<style>' . implode( '', $rules ) . '</style>';
+        // Always output the style block (even if empty) plus a diagnostic
+        // HTML comment so we can inspect what Elementor is returning.
+        $dn_keys = array(
+            'dn_tab_color', 'dn_tab_bg', 'dn_tab_hover_color', 'dn_tab_hover_bg',
+            'dn_tab_active_color', 'dn_tab_active_bg', 'dn_line_color', 'dn_active_line_color',
+            'dn_tabs_align', 'dn_tab_padding', 'dn_tab_gap', 'dn_tab_border_radius',
+            'dn_line_width', 'dn_tabs_margin',
+        );
+        $diag = array();
+        foreach ( $dn_keys as $k ) {
+            $v = $settings[ $k ] ?? '(unset)';
+            $diag[] = $k . '=' . ( is_array( $v ) ? wp_json_encode( $v ) : $v );
         }
+        echo "\n<!-- PF DN-tabs debug: id=$id | " . implode( ' | ', $diag ) . " -->\n";
+        echo '<style>' . implode( '', $rules ) . '</style>';
     }
 
     private function get_finder_list() {
