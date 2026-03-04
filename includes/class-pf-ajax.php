@@ -417,6 +417,8 @@ class PF_Ajax {
 
         if ( $is_beauty ) {
             $this->_debug[] = 'finder_type=beauty';
+        } else {
+            $this->_debug[] = 'finder_type=cosmeceuticals';
         }
         if ( $enable_day_night ) {
             $this->_debug[] = 'day_night=enabled';

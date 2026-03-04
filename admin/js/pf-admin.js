@@ -31,9 +31,17 @@
      * that don't have their dropdown populated yet.
      */
     function applyFinderType( type ) {
+        // Category picker is shown for both beauty and cosmeceuticals.
+        if ( type === 'beauty' || type === 'cosmeceuticals' ) {
+            $('.pf-product-category-picker').show();
+            filterCategoryOptions( type );
+        } else {
+            $('.pf-product-category-picker').hide();
+        }
+
+        // Variation picker is beauty-only.
         if ( type === 'beauty' ) {
             $('.pf-variation-picker').show();
-            $('.pf-product-category-picker').show();
             // Load variations for existing product rows that need them.
             $('.pf-product-row').each(function () {
                 var $row = $(this);
@@ -48,8 +56,29 @@
             });
         } else {
             $('.pf-variation-picker').hide();
-            $('.pf-product-category-picker').hide();
         }
+    }
+
+    /**
+     * Show/hide category <option> elements based on finder type.
+     * Each option has data-type="beauty" or data-type="cosmeceuticals".
+     * The "— None —" option (no data-type) is always visible.
+     */
+    function filterCategoryOptions( type ) {
+        $('.pf-product-category').each(function () {
+            var $select = $(this);
+            $select.find('option[data-type]').each(function () {
+                if ( $(this).data('type') === type ) {
+                    $(this).show();
+                } else {
+                    // If this hidden option is currently selected, reset to empty.
+                    if ( $(this).is(':selected') ) {
+                        $select.val('');
+                    }
+                    $(this).hide();
+                }
+            });
+        });
     }
 
     /**
@@ -390,10 +419,17 @@
         $wrap.find('.pf-product-search').val('');
         $wrap.find('.pf-product-search-results').hide().empty();
 
-        // If Beauty mode, show variation picker, category picker, and load variations.
-        if ( getFinderType() === 'beauty' ) {
-            $row.find('.pf-variation-picker').show();
+        var finderType = getFinderType();
+
+        // Show category picker for both beauty and cosmeceuticals.
+        if ( finderType === 'beauty' || finderType === 'cosmeceuticals' ) {
             $row.find('.pf-product-category-picker').show();
+            filterCategoryOptions( finderType );
+        }
+
+        // Beauty mode: also show variation picker and load variations.
+        if ( finderType === 'beauty' ) {
+            $row.find('.pf-variation-picker').show();
             loadVariationsForRow( $row, prodId );
         }
 

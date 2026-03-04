@@ -639,12 +639,17 @@ class PF_Admin {
             <label class="pf-product-category-label pf-product-category-picker" style="display:none;"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
                 <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
                     <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
-                    <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
-                    <option value="concealer" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
-                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
-                    <option value="cheek" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
-                    <option value="lip_cheek" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
-                    <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                    <option value="base" data-type="beauty" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
+                    <option value="concealer" data-type="beauty" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
+                    <option value="lip" data-type="beauty" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
+                    <option value="cheek" data-type="beauty" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
+                    <option value="lip_cheek" data-type="beauty" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
+                    <option value="eye" data-type="beauty" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                    <option value="cleanser" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'cleanser' ); ?>><?php esc_html_e( 'Cleanser', 'product-finder' ); ?></option>
+                    <option value="exfoliator" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'exfoliator' ); ?>><?php esc_html_e( 'Exfoliator', 'product-finder' ); ?></option>
+                    <option value="moisturiser" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'moisturiser' ); ?>><?php esc_html_e( 'Moisturiser', 'product-finder' ); ?></option>
+                    <option value="essential" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'essential' ); ?>><?php esc_html_e( 'Essential', 'product-finder' ); ?></option>
+                    <option value="specialty" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'specialty' ); ?>><?php esc_html_e( 'Specialty', 'product-finder' ); ?></option>
                 </select>
             </label>
             <label class="pf-product-set-label pf-product-set-picker" style="display:none;"><?php esc_html_e( 'Set:', 'product-finder' ); ?>
@@ -698,12 +703,17 @@ class PF_Admin {
             <label class="pf-product-category-label pf-product-category-picker" style="display:none;"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
                 <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
                     <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
-                    <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
-                    <option value="concealer" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
-                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
-                    <option value="cheek" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
-                    <option value="lip_cheek" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
-                    <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                    <option value="base" data-type="beauty" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
+                    <option value="concealer" data-type="beauty" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
+                    <option value="lip" data-type="beauty" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
+                    <option value="cheek" data-type="beauty" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
+                    <option value="lip_cheek" data-type="beauty" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
+                    <option value="eye" data-type="beauty" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                    <option value="cleanser" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'cleanser' ); ?>><?php esc_html_e( 'Cleanser', 'product-finder' ); ?></option>
+                    <option value="exfoliator" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'exfoliator' ); ?>><?php esc_html_e( 'Exfoliator', 'product-finder' ); ?></option>
+                    <option value="moisturiser" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'moisturiser' ); ?>><?php esc_html_e( 'Moisturiser', 'product-finder' ); ?></option>
+                    <option value="essential" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'essential' ); ?>><?php esc_html_e( 'Essential', 'product-finder' ); ?></option>
+                    <option value="specialty" data-type="cosmeceuticals" <?php selected( $prod['result_category'], 'specialty' ); ?>><?php esc_html_e( 'Specialty', 'product-finder' ); ?></option>
                 </select>
             </label>
             <label class="pf-product-set-label pf-product-set-picker" style="display:none;"><?php esc_html_e( 'Set:', 'product-finder' ); ?>
