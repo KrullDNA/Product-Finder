@@ -441,9 +441,12 @@
             var self = this;
             var $container = this.$resultsScreen.find('.pf-results-container');
 
+            var dayLabel   = this.$el.data('tab-day-label')   || pfFrontend.i18n.tab_day   || 'Day';
+            var nightLabel = this.$el.data('tab-night-label') || pfFrontend.i18n.tab_night || 'Night';
+
             var html = '<div class="pf-dn-tabs">';
-            html += '<button type="button" class="pf-dn-tab pf-dn-tab--active" data-tab="day">' + (pfFrontend.i18n.tab_day || 'Day') + '</button>';
-            html += '<button type="button" class="pf-dn-tab" data-tab="night">' + (pfFrontend.i18n.tab_night || 'Night') + '</button>';
+            html += '<button type="button" class="pf-dn-tab pf-dn-tab--active" data-tab="day">' + this.escHtml(dayLabel) + '</button>';
+            html += '<button type="button" class="pf-dn-tab" data-tab="night">' + this.escHtml(nightLabel) + '</button>';
             html += '</div>';
 
             html += '<div class="pf-dn-panel pf-dn-panel--day pf-dn-panel--active">';

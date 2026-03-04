@@ -48,6 +48,8 @@ class PF_Frontend {
             'id'               => 0,
             'loading_heading'  => '',
             'results_heading'  => '',
+            'tab_day_label'    => '',
+            'tab_night_label'  => '',
         ), $atts, 'product_finder' );
 
         $finder_id = absint( $atts['id'] );
@@ -132,6 +134,12 @@ class PF_Frontend {
             }
             if ( ! empty( $atts['results_heading'] ) ) {
                 echo ' data-results-heading="' . esc_attr( $atts['results_heading'] ) . '"';
+            }
+            if ( ! empty( $atts['tab_day_label'] ) ) {
+                echo ' data-tab-day-label="' . esc_attr( $atts['tab_day_label'] ) . '"';
+            }
+            if ( ! empty( $atts['tab_night_label'] ) ) {
+                echo ' data-tab-night-label="' . esc_attr( $atts['tab_night_label'] ) . '"';
             }
         ?>>
 

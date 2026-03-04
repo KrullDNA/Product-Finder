@@ -1236,6 +1236,137 @@ class PF_Elementor_Widget extends Widget_Base {
         ) );
 
         $this->end_controls_section();
+
+        /* ── Style: Day / Night Tabs ── */
+
+        $this->start_controls_section( 'section_style_dn_tabs', array(
+            'label' => __( 'Day / Night Tabs', 'product-finder' ),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ) );
+
+        $this->add_control( 'dn_tab_heading_labels', array(
+            'label'     => __( 'Tab Labels', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+        ) );
+
+        $this->add_control( 'dn_tab_day_label', array(
+            'label'   => __( 'Day Label', 'product-finder' ),
+            'type'    => Controls_Manager::TEXT,
+            'default' => 'Day',
+        ) );
+
+        $this->add_control( 'dn_tab_night_label', array(
+            'label'   => __( 'Night Label', 'product-finder' ),
+            'type'    => Controls_Manager::TEXT,
+            'default' => 'Night',
+        ) );
+
+        $this->add_control( 'dn_tab_heading_style', array(
+            'label'     => __( 'Tab Style', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'dn_tab_typography',
+            'selector' => '{{WRAPPER}} .pf-dn-tab',
+        ) );
+
+        $this->add_responsive_control( 'dn_tab_padding', array(
+            'label'      => __( 'Tab Padding', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-dn-tab' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'dn_tab_gap', array(
+            'label'      => __( 'Gap Between Tabs', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 60 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-dn-tabs' => 'gap: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'dn_tabs_align', array(
+            'label'   => __( 'Tab Alignment', 'product-finder' ),
+            'type'    => Controls_Manager::CHOOSE,
+            'options' => array(
+                'flex-start' => array( 'title' => __( 'Left', 'product-finder' ),   'icon' => 'eicon-text-align-left' ),
+                'center'     => array( 'title' => __( 'Center', 'product-finder' ), 'icon' => 'eicon-text-align-center' ),
+                'flex-end'   => array( 'title' => __( 'Right', 'product-finder' ),  'icon' => 'eicon-text-align-right' ),
+            ),
+            'selectors' => array(
+                '{{WRAPPER}} .pf-dn-tabs' => 'justify-content: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_control( 'dn_tab_color', array(
+            'label'     => __( 'Text Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab' => 'color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'dn_tab_active_color', array(
+            'label'     => __( 'Active Text Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab--active' => 'color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'dn_tab_hover_color', array(
+            'label'     => __( 'Hover Text Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab:hover' => 'color: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'dn_tab_heading_line', array(
+            'label'     => __( 'Bottom Line', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'dn_line_color', array(
+            'label'     => __( 'Line Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tabs' => 'border-bottom-color: {{VALUE}};' ),
+        ) );
+
+        $this->add_responsive_control( 'dn_line_width', array(
+            'label'      => __( 'Line Thickness', 'product-finder' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 10 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-dn-tabs' => 'border-bottom-width: {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .pf-dn-tab--active::after' => 'height: {{SIZE}}{{UNIT}}; bottom: calc(-1 * {{SIZE}}{{UNIT}});',
+            ),
+        ) );
+
+        $this->add_control( 'dn_active_line_color', array(
+            'label'     => __( 'Active Line Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab--active::after' => 'background: {{VALUE}};' ),
+        ) );
+
+        $this->add_control( 'dn_tab_heading_spacing', array(
+            'label'     => __( 'Spacing', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_responsive_control( 'dn_tabs_margin', array(
+            'label'      => __( 'Tabs Margin', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-dn-tabs' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->end_controls_section();
     }
 
     /* ─── Style: Result Cards ─── */
@@ -1394,6 +1525,16 @@ class PF_Elementor_Widget extends Widget_Base {
         $results_heading = trim( $settings['results_heading_text'] ?? '' );
         if ( $results_heading ) {
             $shortcode_atts .= ' results_heading="' . esc_attr( $results_heading ) . '"';
+        }
+
+        $dn_day_label = trim( $settings['dn_tab_day_label'] ?? '' );
+        if ( $dn_day_label ) {
+            $shortcode_atts .= ' tab_day_label="' . esc_attr( $dn_day_label ) . '"';
+        }
+
+        $dn_night_label = trim( $settings['dn_tab_night_label'] ?? '' );
+        if ( $dn_night_label ) {
+            $shortcode_atts .= ' tab_night_label="' . esc_attr( $dn_night_label ) . '"';
         }
 
         // Render the shortcode
