@@ -1595,6 +1595,13 @@ class PF_Elementor_Widget extends Widget_Base {
         // Render the shortcode
         echo do_shortcode( '[product_finder ' . $shortcode_atts . ']' );
 
+        // Output Day/Night tab styles inline so they apply to the
+        // dynamically injected tabs regardless of Elementor CSS file
+        // caching (e.g. WP Rocket).  Elementor's normal CSS generation
+        // writes to an external file or <style> block at page-save time,
+        // but caching plugins may serve a stale version.
+        $this->render_dn_tab_inline_styles( $settings );
+
         // If a custom SVG icon was chosen, inject it to replace the default loading icon
         $icon_settings = $settings['loading_svg_icon'] ?? array();
         if ( ! empty( $icon_settings['value'] ) ) {
@@ -1646,6 +1653,104 @@ class PF_Elementor_Widget extends Widget_Base {
     /* ═══════════════════════════════════════
        HELPERS
        ═══════════════════════════════════════ */
+
+    /**
+     * Output inline <style> for Day/Night tab controls.
+     *
+     * Dynamically created elements (.pf-dn-tab) can miss Elementor's
+     * pre-generated CSS when a caching plugin serves a stale file.
+     * This method writes the styles directly into the page HTML.
+     */
+    private function render_dn_tab_inline_styles( $settings ) {
+        $id   = $this->get_id();
+        $w    = '.elementor-element-' . $id;
+        $rules = array();
+
+        // Typography is handled by Elementor's Group_Control which
+        // writes its own CSS; we only need the simple value controls.
+
+        // Tab padding
+        $pad = $settings['dn_tab_padding'] ?? array();
+        if ( ! empty( $pad['top'] ) || ! empty( $pad['right'] ) || ! empty( $pad['bottom'] ) || ! empty( $pad['left'] ) ) {
+            $u = $pad['unit'] ?? 'px';
+            $rules[] = "$w .pf-dn-tab{padding:" . ( $pad['top'] ?? 0 ) . $u . ' '
+                . ( $pad['right'] ?? 0 ) . $u . ' '
+                . ( $pad['bottom'] ?? 0 ) . $u . ' '
+                . ( $pad['left'] ?? 0 ) . $u . '}';
+        }
+
+        // Gap
+        if ( ! empty( $settings['dn_tab_gap']['size'] ) ) {
+            $u = $settings['dn_tab_gap']['unit'] ?? 'px';
+            $rules[] = "$w .pf-dn-tabs{gap:" . $settings['dn_tab_gap']['size'] . $u . '}';
+        }
+
+        // Alignment
+        if ( ! empty( $settings['dn_tabs_align'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{justify-content:" . $settings['dn_tabs_align'] . '}';
+        }
+
+        // Border radius
+        $br = $settings['dn_tab_border_radius'] ?? array();
+        if ( ! empty( $br['top'] ) || ! empty( $br['right'] ) || ! empty( $br['bottom'] ) || ! empty( $br['left'] ) ) {
+            $u = $br['unit'] ?? 'px';
+            $rules[] = "$w .pf-dn-tab{border-radius:" . ( $br['top'] ?? 0 ) . $u . ' '
+                . ( $br['right'] ?? 0 ) . $u . ' '
+                . ( $br['bottom'] ?? 0 ) . $u . ' '
+                . ( $br['left'] ?? 0 ) . $u . '}';
+        }
+
+        // Normal state
+        if ( ! empty( $settings['dn_tab_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab{color:" . $settings['dn_tab_color'] . '}';
+        }
+        if ( ! empty( $settings['dn_tab_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab{background-color:" . $settings['dn_tab_bg'] . '}';
+        }
+
+        // Hover state
+        if ( ! empty( $settings['dn_tab_hover_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab:hover{color:" . $settings['dn_tab_hover_color'] . '}';
+        }
+        if ( ! empty( $settings['dn_tab_hover_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab:hover{background-color:" . $settings['dn_tab_hover_bg'] . '}';
+        }
+
+        // Active state
+        if ( ! empty( $settings['dn_tab_active_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{color:" . $settings['dn_tab_active_color'] . '}';
+        }
+        if ( ! empty( $settings['dn_tab_active_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{background-color:" . $settings['dn_tab_active_bg'] . '}';
+        }
+
+        // Bottom line
+        if ( ! empty( $settings['dn_line_color'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{border-bottom-color:" . $settings['dn_line_color'] . '}';
+        }
+        if ( ! empty( $settings['dn_line_width']['size'] ) ) {
+            $s = $settings['dn_line_width']['size'] . ( $settings['dn_line_width']['unit'] ?? 'px' );
+            $rules[] = "$w .pf-dn-tabs{border-bottom-width:$s}";
+            $rules[] = "$w .pf-dn-tab--active::after{height:$s;bottom:calc(-1 * $s)}";
+        }
+        if ( ! empty( $settings['dn_active_line_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab--active::after{background:" . $settings['dn_active_line_color'] . '}';
+        }
+
+        // Tabs margin
+        $tm = $settings['dn_tabs_margin'] ?? array();
+        if ( ! empty( $tm['top'] ) || ! empty( $tm['right'] ) || ! empty( $tm['bottom'] ) || ! empty( $tm['left'] ) ) {
+            $u = $tm['unit'] ?? 'px';
+            $rules[] = "$w .pf-dn-tabs{margin:" . ( $tm['top'] ?? 0 ) . $u . ' '
+                . ( $tm['right'] ?? 0 ) . $u . ' '
+                . ( $tm['bottom'] ?? 0 ) . $u . ' '
+                . ( $tm['left'] ?? 0 ) . $u . '}';
+        }
+
+        if ( ! empty( $rules ) ) {
+            echo '<style>' . implode( '', $rules ) . '</style>';
+        }
+    }
 
     private function get_finder_list() {
         $finders = get_posts( array(

@@ -32,6 +32,7 @@
     function applyFinderType( type ) {
         if ( type === 'beauty' ) {
             $('.pf-variation-picker').show();
+            $('.pf-product-category-picker').show();
             // Load variations for existing product rows that need them.
             $('.pf-product-row').each(function () {
                 var $row = $(this);
@@ -46,6 +47,7 @@
             });
         } else {
             $('.pf-variation-picker').hide();
+            $('.pf-product-category-picker').hide();
         }
     }
 
@@ -350,9 +352,10 @@
         $wrap.find('.pf-product-search').val('');
         $wrap.find('.pf-product-search-results').hide().empty();
 
-        // If Beauty mode, show variation picker and load variations.
+        // If Beauty mode, show variation picker, category picker, and load variations.
         if ( getFinderType() === 'beauty' ) {
             $row.find('.pf-variation-picker').show();
+            $row.find('.pf-product-category-picker').show();
             loadVariationsForRow( $row, prodId );
         }
 

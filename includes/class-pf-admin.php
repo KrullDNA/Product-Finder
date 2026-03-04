@@ -354,7 +354,7 @@ class PF_Admin {
                     <?php endif; ?>
                 </select>
             </div>
-            <label class="pf-product-category-label"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
+            <label class="pf-product-category-label pf-product-category-picker" style="display:none;"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
                 <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
                     <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
                     <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
