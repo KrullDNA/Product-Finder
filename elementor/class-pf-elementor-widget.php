@@ -1750,6 +1750,20 @@ class PF_Elementor_Widget extends Widget_Base {
                 . ( $tm['left'] ?? 0 ) . $u . '}';
         }
 
+        // Diagnostic: dump all dn_ keys found in settings
+        $dn_found = array();
+        foreach ( $settings as $k => $v ) {
+            if ( strpos( $k, 'dn_' ) === 0 ) {
+                $dn_found[ $k ] = is_array( $v ) ? wp_json_encode( $v ) : (string) $v;
+            }
+        }
+        echo "\n<!-- PF DN-tabs debug: id=" . $id
+            . ' | rules=' . count( $rules )
+            . ' | dn_keys_found=' . count( $dn_found )
+            . ' | keys=' . ( $dn_found ? implode( ',', array_keys( $dn_found ) ) : '(none)' )
+            . ' | vals=' . ( $dn_found ? implode( ' | ', array_map( function( $k, $v ) { return "$k=$v"; }, array_keys( $dn_found ), $dn_found ) ) : '(none)' )
+            . " -->\n";
+
         if ( ! empty( $rules ) ) {
             echo '<style>' . implode( '', $rules ) . '</style>';
         }
