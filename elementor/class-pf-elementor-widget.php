@@ -1304,23 +1304,76 @@ class PF_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
+        $this->add_control( 'dn_tab_border_radius', array(
+            'label'      => __( 'Tab Border Radius', 'product-finder' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .pf-dn-tab' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        // ── Tab state colours ──
+
+        $this->add_control( 'dn_tab_heading_colors', array(
+            'label'     => __( 'Tab Colours', 'product-finder' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->start_controls_tabs( 'dn_tab_state_tabs' );
+
+        // Normal state
+        $this->start_controls_tab( 'dn_tab_normal', array(
+            'label' => __( 'Normal', 'product-finder' ),
+        ) );
         $this->add_control( 'dn_tab_color', array(
             'label'     => __( 'Text Colour', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array( '{{WRAPPER}} .pf-dn-tab' => 'color: {{VALUE}};' ),
         ) );
-
-        $this->add_control( 'dn_tab_active_color', array(
-            'label'     => __( 'Active Text Colour', 'product-finder' ),
+        $this->add_control( 'dn_tab_bg', array(
+            'label'     => __( 'Background', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
-            'selectors' => array( '{{WRAPPER}} .pf-dn-tab--active' => 'color: {{VALUE}};' ),
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab' => 'background-color: {{VALUE}};' ),
         ) );
+        $this->end_controls_tab();
 
+        // Hover state
+        $this->start_controls_tab( 'dn_tab_hover_tab', array(
+            'label' => __( 'Hover', 'product-finder' ),
+        ) );
         $this->add_control( 'dn_tab_hover_color', array(
-            'label'     => __( 'Hover Text Colour', 'product-finder' ),
+            'label'     => __( 'Text Colour', 'product-finder' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array( '{{WRAPPER}} .pf-dn-tab:hover' => 'color: {{VALUE}};' ),
         ) );
+        $this->add_control( 'dn_tab_hover_bg', array(
+            'label'     => __( 'Background', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab:hover' => 'background-color: {{VALUE}};' ),
+        ) );
+        $this->end_controls_tab();
+
+        // Active state
+        $this->start_controls_tab( 'dn_tab_active_tab', array(
+            'label' => __( 'Active', 'product-finder' ),
+        ) );
+        $this->add_control( 'dn_tab_active_color', array(
+            'label'     => __( 'Text Colour', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active' => 'color: {{VALUE}};' ),
+        ) );
+        $this->add_control( 'dn_tab_active_bg', array(
+            'label'     => __( 'Background', 'product-finder' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array( '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active' => 'background-color: {{VALUE}};' ),
+        ) );
+        $this->end_controls_tab();
+
+        $this->end_controls_tabs();
+
+        // ── Bottom line ──
 
         $this->add_control( 'dn_tab_heading_line', array(
             'label'     => __( 'Bottom Line', 'product-finder' ),
@@ -1350,6 +1403,8 @@ class PF_Elementor_Widget extends Widget_Base {
             'type'      => Controls_Manager::COLOR,
             'selectors' => array( '{{WRAPPER}} .pf-dn-tab--active::after' => 'background: {{VALUE}};' ),
         ) );
+
+        // ── Spacing ──
 
         $this->add_control( 'dn_tab_heading_spacing', array(
             'label'     => __( 'Spacing', 'product-finder' ),

@@ -1027,14 +1027,15 @@ i.pf-loading-icon {
     color: #888;
     cursor: pointer;
     position: relative;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    border-radius: 0;
 }
 
 .pf-dn-tab:hover {
     color: #333;
 }
 
-.pf-dn-tab--active {
+.pf-dn-tab.pf-dn-tab--active {
     color: #000;
 }
 

@@ -416,6 +416,13 @@
             // Load CSS first (shared across both modes).
             this.loadStyles(data.styles || []);
 
+            // Safari fix: make the results screen visible (but transparent) BEFORE
+            // injecting content.  Safari doesn't calculate layout for elements
+            // inserted into a display:none container, so CrocoBlock templates
+            // render as blank.  By making the container visible first, Safari
+            // properly lays out the injected HTML.
+            this.$resultsScreen.css({ opacity: 0, display: 'block' });
+
             if (data.day_night) {
                 this.renderDayNightResults(data);
             } else {
@@ -426,13 +433,16 @@
 
                     this.loadScripts(data.scripts || [], function () {
                         self.initDynamicContent();
+                        // Force reflow so Safari paints the new content.
+                        void self.$resultsScreen[0].offsetHeight;
                     });
                 } else {
                     this.renderFallbackResults(data);
                 }
             }
 
-            this.$resultsScreen.fadeIn(300);
+            // Animate in (from the already-visible but transparent state).
+            this.$resultsScreen.animate({ opacity: 1 }, 300);
         },
 
         /* ───────── Day / Night tabbed results ───────── */
@@ -479,6 +489,8 @@
             // Init dynamic content (scripts, Elementor widgets, etc.)
             this.loadScripts(data.scripts || [], function () {
                 self.initDynamicContent();
+                // Force reflow so Safari paints CrocoBlock templates.
+                void self.$resultsScreen[0].offsetHeight;
             });
         },
 
@@ -722,6 +734,23 @@
 
             // WooCommerce cart fragments refresh
             $(document.body).trigger('wc_fragment_refresh');
+
+            // 9. Safari repaint fix: force a synchronous layout recalculation
+            //    so WebKit renders dynamically injected CrocoBlock listing content.
+            //    Without this, Safari may show a blank area because it skipped
+            //    layout for content that was inserted while the container was
+            //    hidden (display:none).
+            var container = $container[0];
+            if (container) {
+                void container.offsetHeight;
+                // Double-RAF ensures the browser paints before we consider
+                // content fully initialised (works around WebKit paint coalescing).
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        void container.offsetHeight;
+                    });
+                });
+            }
 
             console.log('[Product Finder] initDynamicContent – complete');
         },
