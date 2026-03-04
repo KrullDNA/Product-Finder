@@ -28,6 +28,8 @@ class PF_Admin {
 
         wp_enqueue_media();
         wp_enqueue_script( 'jquery-ui-sortable' );
+        wp_enqueue_style( 'wp-color-picker' );
+        wp_enqueue_script( 'wp-color-picker' );
 
         wp_enqueue_style(
             'pf-admin',
@@ -95,6 +97,15 @@ class PF_Admin {
             array( $this, 'render_shortcode_box' ),
             'product_finder',
             'side',
+            'default'
+        );
+
+        add_meta_box(
+            'pf_dn_styles',
+            __( 'Day / Night Tab Styling', 'product-finder' ),
+            array( $this, 'render_dn_styles_box' ),
+            'product_finder',
+            'normal',
             'default'
         );
     }
@@ -173,6 +184,166 @@ class PF_Admin {
             <label><strong><?php esc_html_e( 'Columns – Mobile', 'product-finder' ); ?></strong></label><br>
             <input type="number" name="pf_options[cols_mobile]" value="<?php echo esc_attr( $options['cols_mobile'] ); ?>" min="1" max="6" class="widefat">
         </p>
+        <?php
+    }
+
+    /* ─── Day / Night Tab Styling box ─── */
+
+    public function render_dn_styles_box( $post ) {
+        $dn = get_post_meta( $post->ID, '_pf_dn_styles', true );
+        $dn = wp_parse_args( (array) $dn, array(
+            'day_label'        => 'Day',
+            'night_label'      => 'Night',
+            'tab_color'        => '',
+            'tab_bg'           => '',
+            'tab_hover_color'  => '',
+            'tab_hover_bg'     => '',
+            'tab_active_color' => '',
+            'tab_active_bg'    => '',
+            'line_color'       => '',
+            'line_width'       => '',
+            'active_line_color'=> '',
+            'tab_padding'      => '',
+            'tab_gap'          => '',
+            'tab_radius'       => '',
+            'tabs_margin'      => '',
+            'tabs_align'       => '',
+            'font_family'      => '',
+            'font_size'        => '',
+            'font_weight'      => '',
+        ) );
+        ?>
+        <div class="pf-dn-styles-wrap">
+            <p class="description"><?php esc_html_e( 'These styles are applied to the Day / Night result tabs on the frontend. Leave fields blank to use theme defaults.', 'product-finder' ); ?></p>
+
+            <div class="pf-dn-grid">
+                <!-- Labels -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Labels', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Day Label', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[day_label]" value="<?php echo esc_attr( $dn['day_label'] ); ?>" class="regular-text">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Night Label', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[night_label]" value="<?php echo esc_attr( $dn['night_label'] ); ?>" class="regular-text">
+                    </p>
+                </fieldset>
+
+                <!-- Normal State -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Normal State', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Text Colour', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_color]" value="<?php echo esc_attr( $dn['tab_color'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Background', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_bg]" value="<?php echo esc_attr( $dn['tab_bg'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                </fieldset>
+
+                <!-- Hover State -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Hover State', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Text Colour', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_hover_color]" value="<?php echo esc_attr( $dn['tab_hover_color'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Background', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_hover_bg]" value="<?php echo esc_attr( $dn['tab_hover_bg'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                </fieldset>
+
+                <!-- Active State -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Active State', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Text Colour', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_active_color]" value="<?php echo esc_attr( $dn['tab_active_color'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Background', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_active_bg]" value="<?php echo esc_attr( $dn['tab_active_bg'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                </fieldset>
+
+                <!-- Bottom Line -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Bottom Line', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Line Colour', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[line_color]" value="<?php echo esc_attr( $dn['line_color'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Active Line Colour', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[active_line_color]" value="<?php echo esc_attr( $dn['active_line_color'] ); ?>" class="pf-color-field" data-default-color="">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Line Thickness (px)', 'product-finder' ); ?></label><br>
+                        <input type="number" name="pf_dn[line_width]" value="<?php echo esc_attr( $dn['line_width'] ); ?>" min="0" max="10" step="1" class="small-text">
+                    </p>
+                </fieldset>
+
+                <!-- Typography -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Typography', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Font Family', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[font_family]" value="<?php echo esc_attr( $dn['font_family'] ); ?>" class="regular-text" placeholder="e.g. Apotheca, sans-serif">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Font Size (px)', 'product-finder' ); ?></label><br>
+                        <input type="number" name="pf_dn[font_size]" value="<?php echo esc_attr( $dn['font_size'] ); ?>" min="0" max="100" step="1" class="small-text">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Font Weight', 'product-finder' ); ?></label><br>
+                        <select name="pf_dn[font_weight]" class="widefat">
+                            <option value=""><?php esc_html_e( '— Default —', 'product-finder' ); ?></option>
+                            <option value="300" <?php selected( $dn['font_weight'], '300' ); ?>>300 (Light)</option>
+                            <option value="400" <?php selected( $dn['font_weight'], '400' ); ?>>400 (Normal)</option>
+                            <option value="500" <?php selected( $dn['font_weight'], '500' ); ?>>500 (Medium)</option>
+                            <option value="600" <?php selected( $dn['font_weight'], '600' ); ?>>600 (Semi-Bold)</option>
+                            <option value="700" <?php selected( $dn['font_weight'], '700' ); ?>>700 (Bold)</option>
+                        </select>
+                    </p>
+                </fieldset>
+
+                <!-- Spacing -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Spacing & Layout', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Tab Padding (CSS shorthand)', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_padding]" value="<?php echo esc_attr( $dn['tab_padding'] ); ?>" class="regular-text" placeholder="e.g. 8px 16px">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Gap Between Tabs (px)', 'product-finder' ); ?></label><br>
+                        <input type="number" name="pf_dn[tab_gap]" value="<?php echo esc_attr( $dn['tab_gap'] ); ?>" min="0" max="60" step="1" class="small-text">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Border Radius (CSS shorthand)', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tab_radius]" value="<?php echo esc_attr( $dn['tab_radius'] ); ?>" class="regular-text" placeholder="e.g. 4px">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Tabs Margin (CSS shorthand)', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_dn[tabs_margin]" value="<?php echo esc_attr( $dn['tabs_margin'] ); ?>" class="regular-text" placeholder="e.g. 0 0 24px 0">
+                    </p>
+                    <p>
+                        <label><?php esc_html_e( 'Alignment', 'product-finder' ); ?></label><br>
+                        <select name="pf_dn[tabs_align]" class="widefat">
+                            <option value=""><?php esc_html_e( '— Default —', 'product-finder' ); ?></option>
+                            <option value="flex-start" <?php selected( $dn['tabs_align'], 'flex-start' ); ?>><?php esc_html_e( 'Left', 'product-finder' ); ?></option>
+                            <option value="center" <?php selected( $dn['tabs_align'], 'center' ); ?>><?php esc_html_e( 'Centre', 'product-finder' ); ?></option>
+                            <option value="flex-end" <?php selected( $dn['tabs_align'], 'flex-end' ); ?>><?php esc_html_e( 'Right', 'product-finder' ); ?></option>
+                        </select>
+                    </p>
+                </fieldset>
+            </div>
+        </div>
+        <script>
+        jQuery(function($){ $('.pf-color-field').wpColorPicker(); });
+        </script>
         <?php
     }
 
@@ -414,6 +585,29 @@ class PF_Admin {
             'enable_day_night' => ! empty( $raw_options['enable_day_night'] ) ? 1 : 0,
         );
         update_post_meta( $post_id, '_pf_options', $options );
+
+        // Save Day / Night tab styles
+        $raw_dn     = $_POST['pf_dn'] ?? array();
+        $color_keys = array(
+            'tab_color', 'tab_bg', 'tab_hover_color', 'tab_hover_bg',
+            'tab_active_color', 'tab_active_bg', 'line_color', 'active_line_color',
+        );
+        $dn_styles  = array();
+        foreach ( $color_keys as $ck ) {
+            $dn_styles[ $ck ] = sanitize_hex_color( $raw_dn[ $ck ] ?? '' );
+        }
+        $dn_styles['day_label']    = sanitize_text_field( $raw_dn['day_label'] ?? 'Day' );
+        $dn_styles['night_label']  = sanitize_text_field( $raw_dn['night_label'] ?? 'Night' );
+        $dn_styles['line_width']   = absint( $raw_dn['line_width'] ?? 0 );
+        $dn_styles['font_family']  = sanitize_text_field( $raw_dn['font_family'] ?? '' );
+        $dn_styles['font_size']    = absint( $raw_dn['font_size'] ?? 0 );
+        $dn_styles['font_weight']  = sanitize_text_field( $raw_dn['font_weight'] ?? '' );
+        $dn_styles['tab_padding']  = sanitize_text_field( $raw_dn['tab_padding'] ?? '' );
+        $dn_styles['tab_gap']      = absint( $raw_dn['tab_gap'] ?? 0 );
+        $dn_styles['tab_radius']   = sanitize_text_field( $raw_dn['tab_radius'] ?? '' );
+        $dn_styles['tabs_margin']  = sanitize_text_field( $raw_dn['tabs_margin'] ?? '' );
+        $dn_styles['tabs_align']   = sanitize_text_field( $raw_dn['tabs_align'] ?? '' );
+        update_post_meta( $post_id, '_pf_dn_styles', $dn_styles );
     }
 
     private function sanitize_questions( $raw ) {

@@ -341,3 +341,45 @@
 .pf-drag-handle-answer:active {
     cursor: grabbing;
 }
+
+/* ─── Day / Night Tab Styling metabox ─── */
+
+.pf-dn-styles-wrap {
+    margin-top: 8px;
+}
+
+.pf-dn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+@media (max-width: 782px) {
+    .pf-dn-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.pf-dn-fieldset {
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 0;
+    background: #f9f9f9;
+}
+
+.pf-dn-fieldset legend {
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 6px;
+}
+
+.pf-dn-fieldset label {
+    font-size: 12px;
+    color: #1d2327;
+}
+
+.pf-dn-fieldset p {
+    margin: 8px 0;
+}

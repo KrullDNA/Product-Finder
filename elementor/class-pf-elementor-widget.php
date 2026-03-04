@@ -51,7 +51,8 @@ class PF_Elementor_Widget extends Widget_Base {
         $this->section_style_email_screen();
         $this->section_style_loading_screen();
         $this->section_style_results();
-        $this->section_style_dn_tabs();
+        // DN tab styling is now managed via the Finder CPT metabox
+        // (see PF_Admin::render_dn_styles_box) and read from post meta.
         $this->section_style_result_cards();
     }
 
@@ -1241,171 +1242,6 @@ class PF_Elementor_Widget extends Widget_Base {
 
     /* ─── Style: Day / Night Tabs ─── */
 
-    private function section_style_dn_tabs() {
-        // Registered in the Content tab because Elementor's Style tab
-        // silently drops controls that carry the 'selectors' array in
-        // this widget, while controls WITHOUT selectors in the Style tab
-        // are never persisted to the database.  The Content tab avoids
-        // both issues.  All visual styling is applied via inline <style>
-        // in render_dn_tab_inline_styles().
-        $this->start_controls_section( 'section_style_dn_tabs', array(
-            'label' => __( 'Day / Night Tabs', 'product-finder' ),
-            'tab'   => Controls_Manager::TAB_CONTENT,
-        ) );
-
-        $this->add_control( 'dn_tab_heading_labels', array(
-            'label'     => __( 'Tab Labels', 'product-finder' ),
-            'type'      => Controls_Manager::HEADING,
-        ) );
-
-        $this->add_control( 'dn_tab_day_label', array(
-            'label'   => __( 'Day Label', 'product-finder' ),
-            'type'    => Controls_Manager::TEXT,
-            'default' => 'Day',
-        ) );
-
-        $this->add_control( 'dn_tab_night_label', array(
-            'label'   => __( 'Night Label', 'product-finder' ),
-            'type'    => Controls_Manager::TEXT,
-            'default' => 'Night',
-        ) );
-
-        $this->add_control( 'dn_tab_heading_style', array(
-            'label'     => __( 'Tab Style', 'product-finder' ),
-            'type'      => Controls_Manager::HEADING,
-            'separator' => 'before',
-        ) );
-
-        $this->add_group_control( Group_Control_Typography::get_type(), array(
-            'name'     => 'dn_tab_typography',
-            'selector' => '{{WRAPPER}} .pf-dn-tab',
-        ) );
-
-        $this->add_responsive_control( 'dn_tab_padding', array(
-            'label'      => __( 'Tab Padding', 'product-finder' ),
-            'type'       => Controls_Manager::DIMENSIONS,
-            'size_units' => array( 'px', 'em' ),
-        ) );
-
-        $this->add_responsive_control( 'dn_tab_gap', array(
-            'label'      => __( 'Gap Between Tabs', 'product-finder' ),
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => array( 'px', 'em' ),
-            'range'      => array( 'px' => array( 'min' => 0, 'max' => 60 ) ),
-        ) );
-
-        $this->add_responsive_control( 'dn_tabs_align', array(
-            'label'   => __( 'Tab Alignment', 'product-finder' ),
-            'type'    => Controls_Manager::CHOOSE,
-            'options' => array(
-                'flex-start' => array( 'title' => __( 'Left', 'product-finder' ),   'icon' => 'eicon-text-align-left' ),
-                'center'     => array( 'title' => __( 'Center', 'product-finder' ), 'icon' => 'eicon-text-align-center' ),
-                'flex-end'   => array( 'title' => __( 'Right', 'product-finder' ),  'icon' => 'eicon-text-align-right' ),
-            ),
-        ) );
-
-        $this->add_control( 'dn_tab_border_radius', array(
-            'label'      => __( 'Tab Border Radius', 'product-finder' ),
-            'type'       => Controls_Manager::DIMENSIONS,
-            'size_units' => array( 'px', '%' ),
-        ) );
-
-        // ── Tab state colours ──
-
-        $this->add_control( 'dn_tab_heading_colors', array(
-            'label'     => __( 'Tab Colours', 'product-finder' ),
-            'type'      => Controls_Manager::HEADING,
-            'separator' => 'before',
-        ) );
-
-        $this->start_controls_tabs( 'dn_tab_state_tabs' );
-
-        // Normal state
-        $this->start_controls_tab( 'dn_tab_normal', array(
-            'label' => __( 'Normal', 'product-finder' ),
-        ) );
-        $this->add_control( 'dn_tab_color', array(
-            'label' => __( 'Text Colour', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->add_control( 'dn_tab_bg', array(
-            'label' => __( 'Background', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->end_controls_tab();
-
-        // Hover state
-        $this->start_controls_tab( 'dn_tab_hover_tab', array(
-            'label' => __( 'Hover', 'product-finder' ),
-        ) );
-        $this->add_control( 'dn_tab_hover_color', array(
-            'label' => __( 'Text Colour', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->add_control( 'dn_tab_hover_bg', array(
-            'label' => __( 'Background', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->end_controls_tab();
-
-        // Active state
-        $this->start_controls_tab( 'dn_tab_active_tab', array(
-            'label' => __( 'Active', 'product-finder' ),
-        ) );
-        $this->add_control( 'dn_tab_active_color', array(
-            'label' => __( 'Text Colour', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->add_control( 'dn_tab_active_bg', array(
-            'label' => __( 'Background', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-        $this->end_controls_tab();
-
-        $this->end_controls_tabs();
-
-        // ── Bottom line ──
-
-        $this->add_control( 'dn_tab_heading_line', array(
-            'label'     => __( 'Bottom Line', 'product-finder' ),
-            'type'      => Controls_Manager::HEADING,
-            'separator' => 'before',
-        ) );
-
-        $this->add_control( 'dn_line_color', array(
-            'label' => __( 'Line Colour', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-
-        $this->add_responsive_control( 'dn_line_width', array(
-            'label'      => __( 'Line Thickness', 'product-finder' ),
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => array( 'px' ),
-            'range'      => array( 'px' => array( 'min' => 0, 'max' => 10 ) ),
-        ) );
-
-        $this->add_control( 'dn_active_line_color', array(
-            'label' => __( 'Active Line Colour', 'product-finder' ),
-            'type'  => Controls_Manager::COLOR,
-        ) );
-
-        // ── Spacing ──
-
-        $this->add_control( 'dn_tab_heading_spacing', array(
-            'label'     => __( 'Spacing', 'product-finder' ),
-            'type'      => Controls_Manager::HEADING,
-            'separator' => 'before',
-        ) );
-
-        $this->add_responsive_control( 'dn_tabs_margin', array(
-            'label'      => __( 'Tabs Margin', 'product-finder' ),
-            'type'       => Controls_Manager::DIMENSIONS,
-            'size_units' => array( 'px', 'em' ),
-        ) );
-
-        $this->end_controls_section();
-    }
-
     /* ─── Style: Result Cards ─── */
 
     private function section_style_result_cards() {
@@ -1564,13 +1400,17 @@ class PF_Elementor_Widget extends Widget_Base {
             $shortcode_atts .= ' results_heading="' . esc_attr( $results_heading ) . '"';
         }
 
-        $dn_day_label = trim( $settings['dn_tab_day_label'] ?? '' );
-        if ( $dn_day_label ) {
+        // Read DN labels from finder post meta instead of Elementor settings
+        $dn_meta = $finder_id ? get_post_meta( $finder_id, '_pf_dn_styles', true ) : array();
+        $dn_meta = is_array( $dn_meta ) ? $dn_meta : array();
+
+        $dn_day_label = trim( $dn_meta['day_label'] ?? '' );
+        if ( $dn_day_label && 'Day' !== $dn_day_label ) {
             $shortcode_atts .= ' tab_day_label="' . esc_attr( $dn_day_label ) . '"';
         }
 
-        $dn_night_label = trim( $settings['dn_tab_night_label'] ?? '' );
-        if ( $dn_night_label ) {
+        $dn_night_label = trim( $dn_meta['night_label'] ?? '' );
+        if ( $dn_night_label && 'Night' !== $dn_night_label ) {
             $shortcode_atts .= ' tab_night_label="' . esc_attr( $dn_night_label ) . '"';
         }
 
@@ -1644,138 +1484,86 @@ class PF_Elementor_Widget extends Widget_Base {
      * This method writes the styles directly into the page HTML.
      */
     private function render_dn_tab_inline_styles( $settings ) {
-        $id   = $this->get_id();
-        $w    = '.elementor-element-' . $id;
+        $finder_id = absint( $settings['finder_id'] ?? 0 );
+        if ( ! $finder_id ) {
+            return;
+        }
+
+        $dn = get_post_meta( $finder_id, '_pf_dn_styles', true );
+        if ( ! is_array( $dn ) || empty( $dn ) ) {
+            echo "\n<!-- PF DN v6: no _pf_dn_styles for finder $finder_id -->\n";
+            return;
+        }
+
+        $w     = '.elementor-element-' . $this->get_id();
         $rules = array();
 
-        // Typography – Group_Control_Typography sub-keys
-        $typo_props = array(
-            'font_family' => 'font-family',
-            'font_size'   => 'font-size',
-            'font_weight' => 'font-weight',
-            'line_height' => 'line-height',
-            'font_style'  => 'font-style',
-        );
-        foreach ( $typo_props as $key => $css_prop ) {
-            $val = $settings[ 'dn_tab_typography_' . $key ] ?? '';
-            if ( is_array( $val ) ) {
-                // Slider values (font_size, line_height) are arrays
-                if ( ! empty( $val['size'] ) ) {
-                    $u = $val['unit'] ?? 'px';
-                    $rules[] = "$w .pf-dn-tab{{$css_prop}:" . $val['size'] . $u . '}';
-                }
-            } elseif ( '' !== $val ) {
-                $rules[] = "$w .pf-dn-tab{{$css_prop}:" . $val . '}';
-            }
+        // Typography
+        if ( ! empty( $dn['font_family'] ) ) {
+            $rules[] = "$w .pf-dn-tab{font-family:" . esc_attr( $dn['font_family'] ) . '}';
+        }
+        if ( ! empty( $dn['font_size'] ) ) {
+            $rules[] = "$w .pf-dn-tab{font-size:" . absint( $dn['font_size'] ) . 'px}';
+        }
+        if ( ! empty( $dn['font_weight'] ) ) {
+            $rules[] = "$w .pf-dn-tab{font-weight:" . esc_attr( $dn['font_weight'] ) . '}';
         }
 
-        // Tab padding
-        $pad = $settings['dn_tab_padding'] ?? array();
-        if ( ! empty( $pad['top'] ) || ! empty( $pad['right'] ) || ! empty( $pad['bottom'] ) || ! empty( $pad['left'] ) ) {
-            $u = $pad['unit'] ?? 'px';
-            $rules[] = "$w .pf-dn-tab{padding:" . ( $pad['top'] ?? 0 ) . $u . ' '
-                . ( $pad['right'] ?? 0 ) . $u . ' '
-                . ( $pad['bottom'] ?? 0 ) . $u . ' '
-                . ( $pad['left'] ?? 0 ) . $u . '}';
+        // Tab padding / gap / radius / margin (CSS shorthand values)
+        if ( ! empty( $dn['tab_padding'] ) ) {
+            $rules[] = "$w .pf-dn-tab{padding:" . esc_attr( $dn['tab_padding'] ) . '}';
         }
-
-        // Gap
-        if ( ! empty( $settings['dn_tab_gap']['size'] ) ) {
-            $u = $settings['dn_tab_gap']['unit'] ?? 'px';
-            $rules[] = "$w .pf-dn-tabs{gap:" . $settings['dn_tab_gap']['size'] . $u . '}';
+        if ( ! empty( $dn['tab_gap'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{gap:" . absint( $dn['tab_gap'] ) . 'px}';
         }
-
-        // Alignment
-        if ( ! empty( $settings['dn_tabs_align'] ) ) {
-            $rules[] = "$w .pf-dn-tabs{justify-content:" . $settings['dn_tabs_align'] . '}';
+        if ( ! empty( $dn['tab_radius'] ) ) {
+            $rules[] = "$w .pf-dn-tab{border-radius:" . esc_attr( $dn['tab_radius'] ) . '}';
         }
-
-        // Border radius
-        $br = $settings['dn_tab_border_radius'] ?? array();
-        if ( ! empty( $br['top'] ) || ! empty( $br['right'] ) || ! empty( $br['bottom'] ) || ! empty( $br['left'] ) ) {
-            $u = $br['unit'] ?? 'px';
-            $rules[] = "$w .pf-dn-tab{border-radius:" . ( $br['top'] ?? 0 ) . $u . ' '
-                . ( $br['right'] ?? 0 ) . $u . ' '
-                . ( $br['bottom'] ?? 0 ) . $u . ' '
-                . ( $br['left'] ?? 0 ) . $u . '}';
+        if ( ! empty( $dn['tabs_margin'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{margin:" . esc_attr( $dn['tabs_margin'] ) . '}';
+        }
+        if ( ! empty( $dn['tabs_align'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{justify-content:" . esc_attr( $dn['tabs_align'] ) . '}';
         }
 
         // Normal state
-        if ( ! empty( $settings['dn_tab_color'] ) ) {
-            $rules[] = "$w .pf-dn-tab{color:" . $settings['dn_tab_color'] . '}';
+        if ( ! empty( $dn['tab_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab{color:" . esc_attr( $dn['tab_color'] ) . '}';
         }
-        if ( ! empty( $settings['dn_tab_bg'] ) ) {
-            $rules[] = "$w .pf-dn-tab{background-color:" . $settings['dn_tab_bg'] . '}';
+        if ( ! empty( $dn['tab_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab{background-color:" . esc_attr( $dn['tab_bg'] ) . '}';
         }
 
         // Hover state
-        if ( ! empty( $settings['dn_tab_hover_color'] ) ) {
-            $rules[] = "$w .pf-dn-tab:hover{color:" . $settings['dn_tab_hover_color'] . '}';
+        if ( ! empty( $dn['tab_hover_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab:hover{color:" . esc_attr( $dn['tab_hover_color'] ) . '}';
         }
-        if ( ! empty( $settings['dn_tab_hover_bg'] ) ) {
-            $rules[] = "$w .pf-dn-tab:hover{background-color:" . $settings['dn_tab_hover_bg'] . '}';
+        if ( ! empty( $dn['tab_hover_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab:hover{background-color:" . esc_attr( $dn['tab_hover_bg'] ) . '}';
         }
 
         // Active state
-        if ( ! empty( $settings['dn_tab_active_color'] ) ) {
-            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{color:" . $settings['dn_tab_active_color'] . '}';
+        if ( ! empty( $dn['tab_active_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{color:" . esc_attr( $dn['tab_active_color'] ) . '}';
         }
-        if ( ! empty( $settings['dn_tab_active_bg'] ) ) {
-            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{background-color:" . $settings['dn_tab_active_bg'] . '}';
+        if ( ! empty( $dn['tab_active_bg'] ) ) {
+            $rules[] = "$w .pf-dn-tab.pf-dn-tab--active{background-color:" . esc_attr( $dn['tab_active_bg'] ) . '}';
         }
 
         // Bottom line
-        if ( ! empty( $settings['dn_line_color'] ) ) {
-            $rules[] = "$w .pf-dn-tabs{border-bottom-color:" . $settings['dn_line_color'] . '}';
+        if ( ! empty( $dn['line_color'] ) ) {
+            $rules[] = "$w .pf-dn-tabs{border-bottom-color:" . esc_attr( $dn['line_color'] ) . '}';
         }
-        if ( ! empty( $settings['dn_line_width']['size'] ) ) {
-            $s = $settings['dn_line_width']['size'] . ( $settings['dn_line_width']['unit'] ?? 'px' );
+        if ( ! empty( $dn['line_width'] ) ) {
+            $s = absint( $dn['line_width'] ) . 'px';
             $rules[] = "$w .pf-dn-tabs{border-bottom-width:$s}";
             $rules[] = "$w .pf-dn-tab--active::after{height:$s;bottom:calc(-1 * $s)}";
         }
-        if ( ! empty( $settings['dn_active_line_color'] ) ) {
-            $rules[] = "$w .pf-dn-tab--active::after{background:" . $settings['dn_active_line_color'] . '}';
+        if ( ! empty( $dn['active_line_color'] ) ) {
+            $rules[] = "$w .pf-dn-tab--active::after{background:" . esc_attr( $dn['active_line_color'] ) . '}';
         }
 
-        // Tabs margin
-        $tm = $settings['dn_tabs_margin'] ?? array();
-        if ( ! empty( $tm['top'] ) || ! empty( $tm['right'] ) || ! empty( $tm['bottom'] ) || ! empty( $tm['left'] ) ) {
-            $u = $tm['unit'] ?? 'px';
-            $rules[] = "$w .pf-dn-tabs{margin:" . ( $tm['top'] ?? 0 ) . $u . ' '
-                . ( $tm['right'] ?? 0 ) . $u . ' '
-                . ( $tm['bottom'] ?? 0 ) . $u . ' '
-                . ( $tm['left'] ?? 0 ) . $u . '}';
-        }
-
-        // Diagnostic v5: check registration + DB persistence
-        $all_controls = $this->get_controls();
-        $dn_controls  = array();
-        foreach ( $all_controls as $ck => $cv ) {
-            if ( strpos( $ck, 'dn_' ) === 0 ) {
-                $dn_controls[] = $ck;
-            }
-        }
-
-        $raw_data = $this->get_data( 'settings' );
-        $dn_raw   = array();
-        foreach ( $raw_data as $rk => $rv ) {
-            if ( strpos( $rk, 'dn_' ) === 0 ) {
-                $dn_raw[ $rk ] = is_array( $rv ) ? wp_json_encode( $rv ) : (string) $rv;
-            }
-        }
-
-        $post_id     = get_the_ID();
-        $raw_meta    = get_post_meta( $post_id, '_elementor_data', true );
-        $meta_has_dn = is_string( $raw_meta ) ? ( strpos( $raw_meta, '"dn_tab_color"' ) !== false ? 'yes' : 'no' ) : 'n/a';
-
-        echo "\n<!-- PF DN-tabs debug v5: id=" . $id
-            . ' | rules=' . count( $rules )
-            . ' | dn_controls=' . count( $dn_controls )
-            . ' | dn_raw_keys=' . count( $dn_raw )
-            . ' | meta_has_dn=' . $meta_has_dn
-            . ' | dn_tab_color=' . ( ! empty( $settings['dn_tab_color'] ) ? $settings['dn_tab_color'] : '(empty)' )
-            . ' | dn_tab_active_color=' . ( ! empty( $settings['dn_tab_active_color'] ) ? $settings['dn_tab_active_color'] : '(empty)' )
-            . " -->\n";
+        echo "\n<!-- PF DN v6: finder=$finder_id | rules=" . count( $rules ) . " -->\n";
 
         if ( ! empty( $rules ) ) {
             echo '<style>' . implode( '', $rules ) . '</style>';
