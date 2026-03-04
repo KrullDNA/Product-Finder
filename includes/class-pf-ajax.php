@@ -710,8 +710,11 @@ class PF_Ajax {
 
         // Capture CSS/JS enqueued during rendering and collect their
         // URLs so the frontend can load them dynamically.
-        $this->_new_styles  = $this->collect_asset_urls( wp_styles(),  array_diff( wp_styles()->queue,  $styles_before ) );
-        $this->_new_scripts = $this->collect_asset_urls( wp_scripts(), array_diff( wp_scripts()->queue, $scripts_before ) );
+        // Merge (not overwrite) so Day/Night double-renders accumulate assets.
+        $new_styles  = $this->collect_asset_urls( wp_styles(),  array_diff( wp_styles()->queue,  $styles_before ) );
+        $new_scripts = $this->collect_asset_urls( wp_scripts(), array_diff( wp_scripts()->queue, $scripts_before ) );
+        $this->_new_styles  = array_values( array_unique( array_merge( $this->_new_styles,  $new_styles ) ) );
+        $this->_new_scripts = array_values( array_unique( array_merge( $this->_new_scripts, $new_scripts ) ) );
 
         if ( ! empty( $this->_new_styles ) || ! empty( $this->_new_scripts ) ) {
             $this->_debug[] = 'Dynamic assets (from registry): ' . count( $this->_new_styles ) . ' style(s), '

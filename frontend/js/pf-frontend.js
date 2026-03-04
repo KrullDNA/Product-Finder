@@ -385,8 +385,16 @@
                     for (var i = 0; i < res.data.debug.length; i++) {
                         console.log(res.data.debug[i]);
                     }
-                    console.log('listing_html length:', (res.data.listing_html || '').length);
+                    if (res.data.day_night) {
+                        console.log('day_night:', true);
+                        console.log('day_listing_html length:', (res.data.day_listing_html || '').length);
+                        console.log('night_listing_html length:', (res.data.night_listing_html || '').length);
+                    } else {
+                        console.log('listing_html length:', (res.data.listing_html || '').length);
+                    }
                     console.log('products count:', (res.data.products || []).length);
+                    console.log('styles count:', (res.data.styles || []).length);
+                    console.log('scripts count:', (res.data.scripts || []).length);
                     console.groupEnd();
                 }
 
@@ -822,7 +830,7 @@
             this.answers = {};
             this._cachedResults = null;
 
-            this.$resultsScreen.hide();
+            this.$resultsScreen.hide().css('opacity', '');
             this.$emailScreen.hide();
             this.$loadingScreen.hide();
 
