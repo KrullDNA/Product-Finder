@@ -125,7 +125,6 @@ class PF_Admin {
     public function render_options_box( $post ) {
         $options = get_post_meta( $post->ID, '_pf_options', true );
         $options = wp_parse_args( (array) $options, array(
-            'num_results'       => 5,
             'listing_template'  => '',
             'cols_desktop'      => 3,
             'cols_tablet'       => 2,
@@ -159,10 +158,6 @@ class PF_Admin {
             <p class="description"><?php esc_html_e( 'Split results into Day and Night tabs. A "Set" dropdown will appear on each product row.', 'product-finder' ); ?></p>
         </div>
         <hr>
-        <p>
-            <label><strong><?php esc_html_e( 'Number of results to show', 'product-finder' ); ?></strong></label><br>
-            <input type="number" name="pf_options[num_results]" value="<?php echo esc_attr( $options['num_results'] ); ?>" min="1" max="50" class="widefat">
-        </p>
         <p>
             <label><strong><?php esc_html_e( 'CrocoBlock Listing Template', 'product-finder' ); ?></strong></label><br>
             <select name="pf_options[listing_template]" class="widefat">
@@ -756,7 +751,6 @@ class PF_Admin {
             $finder_type = 'cosmeceuticals';
         }
         $options     = array(
-            'num_results'      => absint( $raw_options['num_results'] ?? 5 ),
             'listing_template' => sanitize_text_field( $raw_options['listing_template'] ?? '' ),
             'cols_desktop'     => absint( $raw_options['cols_desktop'] ?? 3 ),
             'cols_tablet'      => absint( $raw_options['cols_tablet'] ?? 2 ),

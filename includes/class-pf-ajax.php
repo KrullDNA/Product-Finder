@@ -198,7 +198,6 @@ class PF_Ajax {
         $questions = get_post_meta( $finder_id, '_pf_questions', true );
         $options   = get_post_meta( $finder_id, '_pf_options', true );
         $options   = wp_parse_args( (array) $options, array(
-            'num_results'      => 5,
             'listing_template' => '',
             'cols_desktop'     => 3,
             'cols_tablet'      => 2,
@@ -425,7 +424,17 @@ class PF_Ajax {
         }
 
         /* ── Helper: select top keys for a given result set ── */
-        $select_top_keys = function ( $set_filter ) use ( $sorted_keys, $composite_scores, $key_map, $options ) {
+
+        // Per-category product limits for cosmeceuticals.
+        $cosm_cat_limits = array(
+            'cleanser'    => 1,
+            'exfoliator'  => 1,
+            'moisturiser' => 1,
+            'essential'   => 2,
+            'specialty'   => 2,
+        );
+
+        $select_top_keys = function ( $set_filter ) use ( $sorted_keys, $composite_scores, $key_map, $is_beauty, $cosm_cat_limits ) {
             // Filter keys to those matching the set (or 'both').
             $filtered = $sorted_keys;
             if ( $set_filter ) {
@@ -446,47 +455,66 @@ class PF_Ajax {
             }
 
             if ( ! $has_categories ) {
-                return array_slice( $filtered, 0, (int) $options['num_results'] );
+                // No categories assigned – return all scored products.
+                return $filtered;
             }
 
-            // Best score per category (for lip/cheek intelligence).
-            $best_by_cat = array();
-            foreach ( $filtered as $k ) {
-                $cat = $key_map[ $k ]['result_category'] ?? '';
-                if ( $cat && ! isset( $best_by_cat[ $cat ] ) ) {
-                    $best_by_cat[ $cat ] = array( 'key' => $k, 'score' => $composite_scores[ $k ] );
+            if ( $is_beauty ) {
+                // Beauty: lip/cheek intelligence, one per category.
+                $best_by_cat = array();
+                foreach ( $filtered as $k ) {
+                    $cat = $key_map[ $k ]['result_category'] ?? '';
+                    if ( $cat && ! isset( $best_by_cat[ $cat ] ) ) {
+                        $best_by_cat[ $cat ] = array( 'key' => $k, 'score' => $composite_scores[ $k ] );
+                    }
                 }
+
+                $lip_score       = isset( $best_by_cat['lip'] )       ? $best_by_cat['lip']['score']       : 0;
+                $cheek_score     = isset( $best_by_cat['cheek'] )     ? $best_by_cat['cheek']['score']     : 0;
+                $lip_cheek_score = isset( $best_by_cat['lip_cheek'] ) ? $best_by_cat['lip_cheek']['score'] : 0;
+
+                $use_split = ( $lip_score > $lip_cheek_score || $cheek_score > $lip_cheek_score )
+                             && $lip_score > 0 && $cheek_score > 0;
+
+                $skip_cats = array();
+                if ( $use_split ) {
+                    $skip_cats['lip_cheek'] = true;
+                } elseif ( $lip_cheek_score > 0 ) {
+                    $skip_cats['lip']   = true;
+                    $skip_cats['cheek'] = true;
+                }
+
+                $top = array();
+                $seen = array();
+                foreach ( $filtered as $k ) {
+                    $cat = $key_map[ $k ]['result_category'] ?? '';
+                    if ( $cat ) {
+                        if ( isset( $skip_cats[ $cat ] ) || isset( $seen[ $cat ] ) ) {
+                            continue;
+                        }
+                        $seen[ $cat ] = true;
+                    }
+                    $top[] = $k;
+                }
+                return $top;
             }
 
-            $lip_score       = isset( $best_by_cat['lip'] )       ? $best_by_cat['lip']['score']       : 0;
-            $cheek_score     = isset( $best_by_cat['cheek'] )     ? $best_by_cat['cheek']['score']     : 0;
-            $lip_cheek_score = isset( $best_by_cat['lip_cheek'] ) ? $best_by_cat['lip_cheek']['score'] : 0;
-
-            $use_split = ( $lip_score > $lip_cheek_score || $cheek_score > $lip_cheek_score )
-                         && $lip_score > 0 && $cheek_score > 0;
-
-            $skip_cats = array();
-            if ( $use_split ) {
-                $skip_cats['lip_cheek'] = true;
-            } elseif ( $lip_cheek_score > 0 ) {
-                $skip_cats['lip']   = true;
-                $skip_cats['cheek'] = true;
-            }
-
+            // Cosmeceuticals: per-category limits.
             $top = array();
-            $seen = array();
+            $cat_counts = array();
             foreach ( $filtered as $k ) {
                 $cat = $key_map[ $k ]['result_category'] ?? '';
                 if ( $cat ) {
-                    if ( isset( $skip_cats[ $cat ] ) || isset( $seen[ $cat ] ) ) {
+                    $limit = isset( $cosm_cat_limits[ $cat ] ) ? $cosm_cat_limits[ $cat ] : 1;
+                    if ( ! isset( $cat_counts[ $cat ] ) ) {
+                        $cat_counts[ $cat ] = 0;
+                    }
+                    if ( $cat_counts[ $cat ] >= $limit ) {
                         continue;
                     }
-                    $seen[ $cat ] = true;
+                    $cat_counts[ $cat ]++;
                 }
                 $top[] = $k;
-                if ( count( $top ) >= (int) $options['num_results'] ) {
-                    break;
-                }
             }
             return $top;
         };

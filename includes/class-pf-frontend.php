@@ -64,7 +64,6 @@ class PF_Frontend {
 
         $options = get_post_meta( $finder_id, '_pf_options', true );
         $options = wp_parse_args( (array) $options, array(
-            'num_results'      => 5,
             'listing_template' => '',
             'cols_desktop'     => 3,
             'cols_tablet'      => 2,
