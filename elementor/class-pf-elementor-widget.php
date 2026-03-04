@@ -1750,18 +1750,30 @@ class PF_Elementor_Widget extends Widget_Base {
                 . ( $tm['left'] ?? 0 ) . $u . '}';
         }
 
-        // Diagnostic: dump all dn_ keys found in settings
-        $dn_found = array();
+        // Diagnostic: dump registered controls + settings
+        $dn_settings = array();
         foreach ( $settings as $k => $v ) {
-            if ( strpos( $k, 'dn_' ) === 0 ) {
-                $dn_found[ $k ] = is_array( $v ) ? wp_json_encode( $v ) : (string) $v;
+            if ( strpos( $k, 'dn_' ) === 0 || strpos( $k, 'dn' ) !== false ) {
+                $dn_settings[ $k ] = is_array( $v ) ? wp_json_encode( $v ) : (string) $v;
             }
         }
-        echo "\n<!-- PF DN-tabs debug: id=" . $id
+
+        // Also check registered controls directly
+        $all_controls   = $this->get_controls();
+        $dn_controls    = array();
+        foreach ( $all_controls as $ck => $cv ) {
+            if ( strpos( $ck, 'dn_' ) === 0 ) {
+                $dn_controls[] = $ck;
+            }
+        }
+
+        echo "\n<!-- PF DN-tabs debug v2: id=" . $id
             . ' | rules=' . count( $rules )
-            . ' | dn_keys_found=' . count( $dn_found )
-            . ' | keys=' . ( $dn_found ? implode( ',', array_keys( $dn_found ) ) : '(none)' )
-            . ' | vals=' . ( $dn_found ? implode( ' | ', array_map( function( $k, $v ) { return "$k=$v"; }, array_keys( $dn_found ), $dn_found ) ) : '(none)' )
+            . ' | total_controls=' . count( $all_controls )
+            . ' | dn_controls_registered=' . count( $dn_controls )
+            . ' | dn_control_names=' . ( $dn_controls ? implode( ',', $dn_controls ) : '(none)' )
+            . ' | dn_settings_keys=' . count( $dn_settings )
+            . ' | dn_settings=' . ( $dn_settings ? implode( ' | ', array_map( function( $k, $v ) { return "$k=" . ( $v !== '' ? $v : '(empty)' ); }, array_keys( $dn_settings ), $dn_settings ) ) : '(none)' )
             . " -->\n";
 
         if ( ! empty( $rules ) ) {
