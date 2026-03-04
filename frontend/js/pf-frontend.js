@@ -411,34 +411,98 @@
 
             console.log('[Product Finder] showResults – styles:', (data.styles || []).length,
                 'scripts:', (data.scripts || []).length,
-                'listing_html length:', (data.listing_html || '').length);
+                'day_night:', !!data.day_night);
 
-            // If CrocoBlock listing HTML was returned and has real content, use it
-            var listingHtml = (data.listing_html || '').trim();
-            if (listingHtml.length > 0) {
-                // 1. Load any CSS enqueued during server-side rendering
-                this.loadStyles(data.styles || []);
+            // Load CSS first (shared across both modes).
+            this.loadStyles(data.styles || []);
 
-                // 2. Inject the listing HTML so DOM elements exist
-                this.$resultsScreen.find('.pf-results-container').html(listingHtml);
-
-                console.log('[Product Finder] HTML injected. Variation forms:',
-                    this.$resultsScreen.find('.variations_form').length,
-                    'Swatch wrappers:',
-                    this.$resultsScreen.find('.fif-vse-swatches').length,
-                    'Elementor widgets:',
-                    this.$resultsScreen.find('.elementor-widget').length);
-
-                // 3. Load any JS enqueued during rendering, then re-init widgets
-                this.loadScripts(data.scripts || [], function () {
-                    self.initDynamicContent();
-                });
+            if (data.day_night) {
+                this.renderDayNightResults(data);
             } else {
-                // Fallback: render product cards
-                this.renderFallbackResults(data);
+                // If CrocoBlock listing HTML was returned and has real content, use it
+                var listingHtml = (data.listing_html || '').trim();
+                if (listingHtml.length > 0) {
+                    this.$resultsScreen.find('.pf-results-container').html(listingHtml);
+
+                    this.loadScripts(data.scripts || [], function () {
+                        self.initDynamicContent();
+                    });
+                } else {
+                    this.renderFallbackResults(data);
+                }
             }
 
             this.$resultsScreen.fadeIn(300);
+        },
+
+        /* ───────── Day / Night tabbed results ───────── */
+
+        renderDayNightResults: function (data) {
+            var self = this;
+            var $container = this.$resultsScreen.find('.pf-results-container');
+
+            var html = '<div class="pf-dn-tabs">';
+            html += '<button type="button" class="pf-dn-tab pf-dn-tab--active" data-tab="day">' + (pfFrontend.i18n.tab_day || 'Day') + '</button>';
+            html += '<button type="button" class="pf-dn-tab" data-tab="night">' + (pfFrontend.i18n.tab_night || 'Night') + '</button>';
+            html += '</div>';
+
+            html += '<div class="pf-dn-panel pf-dn-panel--day pf-dn-panel--active">';
+            html += (data.day_listing_html || '').trim() || '<div class="pf-dn-fallback" data-set="day"></div>';
+            html += '</div>';
+
+            html += '<div class="pf-dn-panel pf-dn-panel--night">';
+            html += (data.night_listing_html || '').trim() || '<div class="pf-dn-fallback" data-set="night"></div>';
+            html += '</div>';
+
+            $container.html(html);
+
+            // Render fallback cards if no CrocoBlock HTML for a set.
+            if ($container.find('.pf-dn-fallback[data-set="day"]').length) {
+                this.renderFallbackInto($container.find('.pf-dn-fallback[data-set="day"]'), data.day_products || [], data);
+            }
+            if ($container.find('.pf-dn-fallback[data-set="night"]').length) {
+                this.renderFallbackInto($container.find('.pf-dn-fallback[data-set="night"]'), data.night_products || [], data);
+            }
+
+            // Tab click handler.
+            $container.find('.pf-dn-tab').on('click', function () {
+                var tab = $(this).data('tab');
+                $container.find('.pf-dn-tab').removeClass('pf-dn-tab--active');
+                $(this).addClass('pf-dn-tab--active');
+                $container.find('.pf-dn-panel').removeClass('pf-dn-panel--active');
+                $container.find('.pf-dn-panel--' + tab).addClass('pf-dn-panel--active');
+            });
+
+            // Init dynamic content (scripts, Elementor widgets, etc.)
+            this.loadScripts(data.scripts || [], function () {
+                self.initDynamicContent();
+            });
+        },
+
+        renderFallbackInto: function ($target, products, data) {
+            var opts = data.options || this.options;
+            var colsD = opts.cols_desktop || 3;
+            var colsT = opts.cols_tablet || 2;
+            var colsM = opts.cols_mobile || 1;
+            var isBeauty = (opts.finder_type === 'beauty');
+
+            var html = '<div class="pf-results-grid pf-cols-d-' + colsD + ' pf-cols-t-' + colsT + ' pf-cols-m-' + colsM + '">';
+            for (var i = 0; i < products.length; i++) {
+                var p = products[i];
+                html += '<div class="pf-result-card">';
+                if (p.match_pct) {
+                    html += '<span class="pf-match-badge">' + p.match_pct + '% match</span>';
+                }
+                if (p.image) {
+                    html += '<a href="' + this.escHtml(p.permalink) + '" class="pf-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
+                }
+                html += '<div class="pf-result-info">';
+                html += '<h4 class="pf-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
+                html += '<div class="pf-result-price">' + p.price + '</div>';
+                html += '</div></div>';
+            }
+            html += '</div>';
+            $target.html(html);
         },
 
         /**

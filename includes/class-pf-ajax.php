@@ -255,6 +255,7 @@ class PF_Ajax {
                     $variation_id    = absint( $p['variation_id'] ?? 0 );
                     $rank            = absint( $p['rank'] );
                     $result_category = sanitize_key( $p['result_category'] ?? '' );
+                    $result_set      = sanitize_key( $p['result_set'] ?? 'both' );
                     if ( ! $pid ) {
                         continue;
                     }
@@ -272,6 +273,7 @@ class PF_Ajax {
                             'pid'             => $pid,
                             'variation_id'    => $variation_id,
                             'result_category' => $result_category,
+                            'result_set'      => $result_set,
                         );
                     }
                     // Prefer a non-empty category if one is set across answers.
@@ -316,92 +318,8 @@ class PF_Ajax {
 
         arsort( $composite_scores );
 
-        // ── Result selection: best-per-category filtering ──
-        // When products have a result_category assigned, only show the
-        // single best-scoring product per category.  Products without a
-        // category are included normally up to the results limit.
-        //
-        // Lip / Cheek intelligence:
-        // Three categories compete for the lip+cheek slot(s):
-        //   "lip", "cheek", and "lip_cheek" (combined).
-        // If the best individual lip OR cheek product scores higher than
-        // the best lip_cheek product, we split into two separate results
-        // (one lip, one cheek).  Otherwise we show the single lip_cheek.
-        $sorted_keys = array_keys( $composite_scores );
-        $has_categories = false;
-        foreach ( $sorted_keys as $k ) {
-            if ( ! empty( $key_map[ $k ]['result_category'] ) ) {
-                $has_categories = true;
-                break;
-            }
-        }
-
-        if ( $has_categories ) {
-            // First pass: find the best score per category.
-            $best_by_cat = array(); // cat => { key, score }
-            foreach ( $sorted_keys as $k ) {
-                $cat = $key_map[ $k ]['result_category'] ?? '';
-                if ( $cat && ! isset( $best_by_cat[ $cat ] ) ) {
-                    $best_by_cat[ $cat ] = array(
-                        'key'   => $k,
-                        'score' => $composite_scores[ $k ],
-                    );
-                }
-            }
-
-            // Lip / Cheek vs Lip & Cheek decision.
-            $lip_score       = isset( $best_by_cat['lip'] )       ? $best_by_cat['lip']['score']       : 0;
-            $cheek_score     = isset( $best_by_cat['cheek'] )     ? $best_by_cat['cheek']['score']     : 0;
-            $lip_cheek_score = isset( $best_by_cat['lip_cheek'] ) ? $best_by_cat['lip_cheek']['score'] : 0;
-
-            // Use split categories when either individual lip or cheek
-            // scores higher than the combined lip_cheek product.
-            $use_split = ( $lip_score > $lip_cheek_score || $cheek_score > $lip_cheek_score )
-                         && $lip_score > 0 && $cheek_score > 0;
-
-            // Decide which lip/cheek categories to exclude.
-            $skip_cats = array();
-            if ( $use_split ) {
-                $skip_cats['lip_cheek'] = true; // Exclude combined.
-            } else {
-                if ( $lip_cheek_score > 0 ) {
-                    $skip_cats['lip']   = true;  // Exclude individual.
-                    $skip_cats['cheek'] = true;
-                }
-            }
-
-            // Second pass: build top_keys, one per category.
-            $top_keys        = array();
-            $seen_categories = array();
-            foreach ( $sorted_keys as $k ) {
-                $cat = $key_map[ $k ]['result_category'] ?? '';
-                if ( $cat ) {
-                    if ( isset( $skip_cats[ $cat ] ) ) {
-                        continue;
-                    }
-                    if ( isset( $seen_categories[ $cat ] ) ) {
-                        continue;
-                    }
-                    $seen_categories[ $cat ] = true;
-                }
-                $top_keys[] = $k;
-                if ( count( $top_keys ) >= (int) $options['num_results'] ) {
-                    break;
-                }
-            }
-        } else {
-            // No categories assigned — fall back to simple top-N.
-            $top_keys = array_slice( $sorted_keys, 0, (int) $options['num_results'] );
-        }
-
-        // Extract parent product IDs for CrocoBlock listing rendering.
-        $top_ids = array();
-        foreach ( $top_keys as $key ) {
-            $pid = $key_map[ $key ]['pid'] ?? (int) $key;
-            if ( ! in_array( $pid, $top_ids, true ) ) {
-                $top_ids[] = $pid;
-            }
-        }
+        $sorted_keys    = array_keys( $composite_scores );
+        $enable_day_night = ! empty( $options['enable_day_night'] );
 
         // Debug log
         $this->_debug = array();
@@ -411,154 +329,278 @@ class PF_Ajax {
         if ( $is_beauty ) {
             $this->_debug[] = 'finder_type=beauty';
         }
-
-        // Build parent → matched variation / category mappings so widgets
-        // inside the CrocoBlock listing can show the specific variation
-        // and category label that scored.
-        self::$matched_variations = array();
-        self::$matched_categories = array();
-        foreach ( $top_keys as $key ) {
-            $info = $key_map[ $key ];
-            $vid  = $info['variation_id'];
-            $pid  = $info['pid'];
-            $cat  = $info['result_category'] ?? '';
-            if ( $vid && ! isset( self::$matched_variations[ $pid ] ) ) {
-                self::$matched_variations[ $pid ] = $vid;
-            }
-            if ( $cat && ! isset( self::$matched_categories[ $pid ] ) ) {
-                self::$matched_categories[ $pid ] = $cat;
-            }
+        if ( $enable_day_night ) {
+            $this->_debug[] = 'day_night=enabled';
         }
 
-        // If CrocoBlock listing template is set, render via JetEngine.
-        // Both Cosmeceuticals and Beauty modes use the same CrocoBlock
-        // template for visual consistency.
-        $html = '';
-        if ( ! empty( $options['listing_template'] ) && ! empty( $top_ids ) ) {
-            $this->_debug[] = 'listing_template=' . $options['listing_template'] . ', product_ids=' . implode( ',', $top_ids );
-            $html = $this->render_crocoblock_listing( $top_ids, $options );
-            $this->_debug[] = 'final listing_html length=' . strlen( $html );
-        } else {
-            $this->_debug[] = 'No listing template set or no product IDs';
-        }
-
-        // Build product data (fallback renderer and email handler both use this).
-        $products_data = array();
-        foreach ( $top_keys as $key ) {
-            $info         = $key_map[ $key ];
-            $pid          = $info['pid'];
-            $variation_id = $info['variation_id'];
-
-            $product = wc_get_product( $pid );
-            if ( ! $product ) {
-                continue;
+        /* ── Helper: select top keys for a given result set ── */
+        $select_top_keys = function ( $set_filter ) use ( $sorted_keys, $composite_scores, $key_map, $options ) {
+            // Filter keys to those matching the set (or 'both').
+            $filtered = $sorted_keys;
+            if ( $set_filter ) {
+                $filtered = array_filter( $sorted_keys, function ( $k ) use ( $key_map, $set_filter ) {
+                    $s = $key_map[ $k ]['result_set'] ?? 'both';
+                    return $s === 'both' || $s === $set_filter;
+                } );
+                $filtered = array_values( $filtered );
             }
 
-            // Match percentage.
-            $match_pct = $max_possible > 0
-                ? min( 100, round( ( $product_scores[ $key ] / $max_possible ) * 100 ) )
-                : 0;
+            // Check if any have categories.
+            $has_categories = false;
+            foreach ( $filtered as $k ) {
+                if ( ! empty( $key_map[ $k ]['result_category'] ) ) {
+                    $has_categories = true;
+                    break;
+                }
+            }
 
-            // Deduplicate answer reasons per question.
-            $reasons = array();
-            $seen_q  = array();
-            if ( ! empty( $product_answers[ $key ] ) ) {
-                foreach ( $product_answers[ $key ] as $r ) {
-                    if ( in_array( $r['qi'], $seen_q, true ) ) {
+            if ( ! $has_categories ) {
+                return array_slice( $filtered, 0, (int) $options['num_results'] );
+            }
+
+            // Best score per category (for lip/cheek intelligence).
+            $best_by_cat = array();
+            foreach ( $filtered as $k ) {
+                $cat = $key_map[ $k ]['result_category'] ?? '';
+                if ( $cat && ! isset( $best_by_cat[ $cat ] ) ) {
+                    $best_by_cat[ $cat ] = array( 'key' => $k, 'score' => $composite_scores[ $k ] );
+                }
+            }
+
+            $lip_score       = isset( $best_by_cat['lip'] )       ? $best_by_cat['lip']['score']       : 0;
+            $cheek_score     = isset( $best_by_cat['cheek'] )     ? $best_by_cat['cheek']['score']     : 0;
+            $lip_cheek_score = isset( $best_by_cat['lip_cheek'] ) ? $best_by_cat['lip_cheek']['score'] : 0;
+
+            $use_split = ( $lip_score > $lip_cheek_score || $cheek_score > $lip_cheek_score )
+                         && $lip_score > 0 && $cheek_score > 0;
+
+            $skip_cats = array();
+            if ( $use_split ) {
+                $skip_cats['lip_cheek'] = true;
+            } elseif ( $lip_cheek_score > 0 ) {
+                $skip_cats['lip']   = true;
+                $skip_cats['cheek'] = true;
+            }
+
+            $top = array();
+            $seen = array();
+            foreach ( $filtered as $k ) {
+                $cat = $key_map[ $k ]['result_category'] ?? '';
+                if ( $cat ) {
+                    if ( isset( $skip_cats[ $cat ] ) || isset( $seen[ $cat ] ) ) {
                         continue;
                     }
-                    $seen_q[]  = $r['qi'];
-                    $reasons[] = $r['answer_text'];
+                    $seen[ $cat ] = true;
+                }
+                $top[] = $k;
+                if ( count( $top ) >= (int) $options['num_results'] ) {
+                    break;
                 }
             }
+            return $top;
+        };
 
-            $item = array(
-                'id'                => $pid,
-                'name'              => $product->get_name(),
-                'price'             => $product->get_price_html(),
-                'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'large' ),
-                'permalink'         => $product->get_permalink(),
-                'score'             => $product_scores[ $key ],
-                'match_pct'         => $match_pct,
-                'questions_matched' => count( $product_questions[ $key ] ?? array() ),
-                'total_questions'   => $total_answered,
-                'reasons'           => $reasons,
-                'variation_id'      => 0,
-                'is_variable'       => false,
-            );
+        /* ── Helper: extract parent IDs from keys ── */
+        $extract_ids = function ( $keys ) use ( $key_map ) {
+            $ids = array();
+            foreach ( $keys as $key ) {
+                $pid = $key_map[ $key ]['pid'] ?? (int) $key;
+                if ( ! in_array( $pid, $ids, true ) ) {
+                    $ids[] = $pid;
+                }
+            }
+            return $ids;
+        };
 
-            // In Beauty mode, overlay variation-specific data.
-            if ( $is_beauty && $variation_id ) {
-                $variation = wc_get_product( $variation_id );
-                if ( $variation && $variation->is_type( 'variation' ) ) {
-                    $var_image = wp_get_attachment_image_url( $variation->get_image_id(), 'large' );
+        /* ── Helper: set matched variation/category mappings ── */
+        $set_mappings = function ( $keys ) use ( $key_map ) {
+            self::$matched_variations = array();
+            self::$matched_categories = array();
+            foreach ( $keys as $key ) {
+                $info = $key_map[ $key ];
+                $vid  = $info['variation_id'];
+                $pid  = $info['pid'];
+                $cat  = $info['result_category'] ?? '';
+                if ( $vid && ! isset( self::$matched_variations[ $pid ] ) ) {
+                    self::$matched_variations[ $pid ] = $vid;
+                }
+                if ( $cat && ! isset( self::$matched_categories[ $pid ] ) ) {
+                    self::$matched_categories[ $pid ] = $cat;
+                }
+            }
+        };
 
-                    // Build a descriptive name: "Parent — Shade Name"
-                    $attrs       = $variation->get_attributes();
-                    $attr_labels = array();
-                    foreach ( $attrs as $attr_name => $attr_value ) {
-                        if ( empty( $attr_value ) ) {
+        /* ── Helper: build product data from keys ── */
+        $build_products_data = function ( $keys ) use (
+            $key_map, $product_scores, $product_questions, $product_answers,
+            $max_possible, $total_answered, $is_beauty
+        ) {
+            $data = array();
+            foreach ( $keys as $key ) {
+                $info         = $key_map[ $key ];
+                $pid          = $info['pid'];
+                $variation_id = $info['variation_id'];
+
+                $product = wc_get_product( $pid );
+                if ( ! $product ) {
+                    continue;
+                }
+
+                $match_pct = $max_possible > 0
+                    ? min( 100, round( ( $product_scores[ $key ] / $max_possible ) * 100 ) )
+                    : 0;
+
+                $reasons = array();
+                $seen_q  = array();
+                if ( ! empty( $product_answers[ $key ] ) ) {
+                    foreach ( $product_answers[ $key ] as $r ) {
+                        if ( in_array( $r['qi'], $seen_q, true ) ) {
                             continue;
                         }
-                        // Taxonomy attributes store slugs; look up the term name.
-                        if ( taxonomy_exists( $attr_name ) ) {
-                            $term = get_term_by( 'slug', $attr_value, $attr_name );
-                            if ( $term && ! is_wp_error( $term ) ) {
-                                $attr_labels[] = $term->name;
+                        $seen_q[]  = $r['qi'];
+                        $reasons[] = $r['answer_text'];
+                    }
+                }
+
+                $item = array(
+                    'id'                => $pid,
+                    'name'              => $product->get_name(),
+                    'price'             => $product->get_price_html(),
+                    'image'             => wp_get_attachment_image_url( $product->get_image_id(), 'large' ),
+                    'permalink'         => $product->get_permalink(),
+                    'score'             => $product_scores[ $key ],
+                    'match_pct'         => $match_pct,
+                    'questions_matched' => count( $product_questions[ $key ] ?? array() ),
+                    'total_questions'   => $total_answered,
+                    'reasons'           => $reasons,
+                    'variation_id'      => 0,
+                    'is_variable'       => false,
+                );
+
+                if ( $is_beauty && $variation_id ) {
+                    $variation = wc_get_product( $variation_id );
+                    if ( $variation && $variation->is_type( 'variation' ) ) {
+                        $var_image   = wp_get_attachment_image_url( $variation->get_image_id(), 'large' );
+                        $attrs       = $variation->get_attributes();
+                        $attr_labels = array();
+                        foreach ( $attrs as $attr_name => $attr_value ) {
+                            if ( empty( $attr_value ) ) {
                                 continue;
                             }
+                            if ( taxonomy_exists( $attr_name ) ) {
+                                $term = get_term_by( 'slug', $attr_value, $attr_name );
+                                if ( $term && ! is_wp_error( $term ) ) {
+                                    $attr_labels[] = $term->name;
+                                    continue;
+                                }
+                            }
+                            $attr_labels[] = $attr_value;
                         }
-                        // Custom text attribute – value is already human-readable.
-                        $attr_labels[] = $attr_value;
-                    }
-                    $attr_label = implode( ' / ', array_filter( $attr_labels ) );
-                    $var_name   = $product->get_name() . ( $attr_label ? ' — ' . $attr_label : '' );
+                        $attr_label = implode( ' / ', array_filter( $attr_labels ) );
+                        $var_name   = $product->get_name() . ( $attr_label ? ' — ' . $attr_label : '' );
 
-                    $item['variation_id'] = $variation_id;
-                    $item['is_variable']  = true;
-                    $item['name']         = $var_name;
-                    $item['price']        = $variation->get_price_html();
-                    $item['image']        = $var_image ?: $item['image'];
-                    $item['permalink']    = $variation->get_permalink();
+                        $item['variation_id'] = $variation_id;
+                        $item['is_variable']  = true;
+                        $item['name']         = $var_name;
+                        $item['price']        = $variation->get_price_html();
+                        $item['image']        = $var_image ?: $item['image'];
+                        $item['permalink']    = $variation->get_permalink();
 
-                    // Include variation attributes for add-to-cart.
-                    $item['variation_attributes'] = array();
-                    foreach ( $attrs as $attr_key => $attr_val ) {
-                        $item['variation_attributes'][ 'attribute_' . $attr_key ] = $attr_val;
+                        $item['variation_attributes'] = array();
+                        foreach ( $attrs as $attr_key => $attr_val ) {
+                            $item['variation_attributes'][ 'attribute_' . $attr_key ] = $attr_val;
+                        }
                     }
+                }
+
+                $data[] = $item;
+            }
+            return $data;
+        };
+
+        /* ── Helper: render CrocoBlock listing for a set of IDs ── */
+        $render_listing = function ( $ids ) use ( $options ) {
+            $html = '';
+            if ( ! empty( $options['listing_template'] ) && ! empty( $ids ) ) {
+                $this->_debug[] = 'listing_template=' . $options['listing_template'] . ', product_ids=' . implode( ',', $ids );
+                $html = $this->render_crocoblock_listing( $ids, $options );
+                $this->_debug[] = 'listing_html length=' . strlen( $html );
+            }
+            return $html;
+        };
+
+        /* ════════════════════════════════════════════════
+           Build response: single set or Day/Night split
+           ════════════════════════════════════════════════ */
+
+        if ( $enable_day_night ) {
+            // ── Day results ──
+            $day_keys = $select_top_keys( 'day' );
+            $day_ids  = $extract_ids( $day_keys );
+            $set_mappings( $day_keys );
+            $day_html = $render_listing( $day_ids );
+            $day_products = $build_products_data( $day_keys );
+
+            // ── Night results ──
+            $night_keys = $select_top_keys( 'night' );
+            $night_ids  = $extract_ids( $night_keys );
+            $set_mappings( $night_keys );
+            $night_html = $render_listing( $night_ids );
+            $night_products = $build_products_data( $night_keys );
+
+            // Stray output cleanup.
+            $stray = $this->ob_clean_to( $ob_baseline );
+            if ( ! empty( $stray ) ) {
+                $this->_debug[] = 'Stray output discarded (len=' . strlen( $stray ) . ')';
+            }
+
+            wp_send_json_success( array(
+                'day_night'        => true,
+                'day_products'     => $day_products,
+                'day_product_ids'  => $day_ids,
+                'day_listing_html' => $day_html,
+                'night_products'     => $night_products,
+                'night_product_ids'  => $night_ids,
+                'night_listing_html' => $night_html,
+                'products'    => array_merge( $day_products, $night_products ),
+                'product_ids' => array_unique( array_merge( $day_ids, $night_ids ) ),
+                'listing_html'=> '', // Not used in day/night mode.
+                'options'     => $options,
+                'styles'      => $this->_new_styles,
+                'scripts'     => $this->_new_scripts,
+                'debug'       => $this->_debug,
+            ) );
+        } else {
+            // ── Single result set ──
+            $top_keys = $select_top_keys( null );
+            $top_ids  = $extract_ids( $top_keys );
+            $set_mappings( $top_keys );
+            $html = $render_listing( $top_ids );
+            $products_data = $build_products_data( $top_keys );
+
+            // Stray output cleanup.
+            $stray = $this->ob_clean_to( $ob_baseline );
+            if ( ! empty( $stray ) ) {
+                $stray_stripped = trim( strip_tags( $stray ) );
+                if ( empty( $html ) && ! empty( $stray_stripped ) ) {
+                    $html = $stray;
+                    $this->_debug[] = 'Recovered listing HTML from stray output (len=' . strlen( $stray ) . ')';
+                } else {
+                    $this->_debug[] = 'Stray output discarded (len=' . strlen( $stray ) . '): '
+                        . substr( $stray, 0, 500 );
                 }
             }
 
-            $products_data[] = $item;
+            wp_send_json_success( array(
+                'products'    => $products_data,
+                'product_ids' => $top_ids,
+                'listing_html'=> $html,
+                'options'     => $options,
+                'styles'      => $this->_new_styles,
+                'scripts'     => $this->_new_scripts,
+                'debug'       => $this->_debug,
+            ) );
         }
-
-        // Capture any stray output that leaked during rendering (e.g.
-        // WooCommerce Add to Cart widget flushing / destroying output
-        // buffers).  When safe_render()'s own buffer is destroyed the
-        // rendered HTML ends up in the parent buffer that we started at
-        // line 111.  If $html is still empty but the stray output
-        // contains valid listing HTML, recover it instead of discarding.
-        $stray = $this->ob_clean_to( $ob_baseline );
-        if ( ! empty( $stray ) ) {
-            $stray_stripped = trim( strip_tags( $stray ) );
-            if ( empty( $html ) && ! empty( $stray_stripped ) ) {
-                $html = $stray;
-                $this->_debug[] = 'Recovered listing HTML from stray output (len=' . strlen( $stray ) . ')';
-            } else {
-                $this->_debug[] = 'Stray output discarded (len=' . strlen( $stray ) . '): '
-                    . substr( $stray, 0, 500 );
-            }
-        }
-
-        wp_send_json_success( array(
-            'products'    => $products_data,
-            'product_ids' => $top_ids,
-            'listing_html'=> $html,
-            'options'     => $options,
-            'styles'      => $this->_new_styles,
-            'scripts'     => $this->_new_scripts,
-            'debug'       => $this->_debug,
-        ) );
     }
 
     /* ────────── Frontend: add variable product to cart ────── */

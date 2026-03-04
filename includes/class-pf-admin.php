@@ -120,6 +120,7 @@ class PF_Admin {
             'cols_tablet'       => 2,
             'cols_mobile'       => 1,
             'finder_type'       => 'cosmeceuticals',
+            'enable_day_night'  => 0,
         ) );
 
         wp_nonce_field( 'pf_save_meta', 'pf_meta_nonce' );
@@ -138,6 +139,13 @@ class PF_Admin {
                 <?php esc_html_e( 'Beauty', 'product-finder' ); ?>
                 <span class="description"><?php esc_html_e( 'Product variation recommendations (shades, colours)', 'product-finder' ); ?></span>
             </label>
+        </div>
+        <div class="pf-day-night-wrap">
+            <label>
+                <input type="checkbox" name="pf_options[enable_day_night]" value="1" <?php checked( $options['enable_day_night'], 1 ); ?>>
+                <strong><?php esc_html_e( 'Enable Day / Night Results', 'product-finder' ); ?></strong>
+            </label>
+            <p class="description"><?php esc_html_e( 'Split results into Day and Night tabs. A "Set" dropdown will appear on each product row.', 'product-finder' ); ?></p>
         </div>
         <hr>
         <p>
@@ -319,6 +327,7 @@ class PF_Admin {
             'variation_id'    => '',
             'rank'            => 1,
             'result_category' => '',
+            'result_set'      => 'both',
         ) );
         $name_prefix = "pf_questions[{$qi}][answers][{$ai}][products][{$pi}]";
         $product_name = $prod['id'] ? get_the_title( $prod['id'] ) : '{{data.name}}';
@@ -354,6 +363,13 @@ class PF_Admin {
                     <option value="cheek" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
                     <option value="lip_cheek" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
                     <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                </select>
+            </label>
+            <label class="pf-product-set-label pf-product-set-picker" style="display:none;"><?php esc_html_e( 'Set:', 'product-finder' ); ?>
+                <select name="<?php echo esc_attr( $name_prefix ); ?>[result_set]" class="pf-product-set">
+                    <option value="both" <?php selected( $prod['result_set'], 'both' ); ?>><?php esc_html_e( 'Both', 'product-finder' ); ?></option>
+                    <option value="day" <?php selected( $prod['result_set'], 'day' ); ?>><?php esc_html_e( 'Day', 'product-finder' ); ?></option>
+                    <option value="night" <?php selected( $prod['result_set'], 'night' ); ?>><?php esc_html_e( 'Night', 'product-finder' ); ?></option>
                 </select>
             </label>
             <label class="pf-product-rank-label"><?php esc_html_e( 'Rank:', 'product-finder' ); ?>
@@ -395,6 +411,7 @@ class PF_Admin {
             'cols_tablet'      => absint( $raw_options['cols_tablet'] ?? 2 ),
             'cols_mobile'      => absint( $raw_options['cols_mobile'] ?? 1 ),
             'finder_type'      => $finder_type,
+            'enable_day_night' => ! empty( $raw_options['enable_day_night'] ) ? 1 : 0,
         );
         update_post_meta( $post_id, '_pf_options', $options );
     }
@@ -426,11 +443,16 @@ class PF_Admin {
                             if ( ! in_array( $cat, $valid_categories, true ) ) {
                                 $cat = '';
                             }
+                            $result_set = sanitize_key( $p['result_set'] ?? 'both' );
+                            if ( ! in_array( $result_set, array( 'both', 'day', 'night' ), true ) ) {
+                                $result_set = 'both';
+                            }
                             $answer['products'][] = array(
                                 'id'              => absint( $p['id'] ?? 0 ),
                                 'variation_id'    => absint( $p['variation_id'] ?? 0 ),
                                 'rank'            => absint( $p['rank'] ?? 1 ),
                                 'result_category' => $cat,
+                                'result_set'      => $result_set,
                             );
                         }
                     }

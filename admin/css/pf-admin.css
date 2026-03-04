@@ -242,6 +242,20 @@
     font-size: 12px;
 }
 
+.pf-product-set-label {
+    font-size: 12px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.pf-product-set {
+    font-size: 12px;
+}
+
+.pf-day-night-wrap {
+    margin: 12px 0;
+}
+
 .pf-product-rank-label {
     font-size: 12px;
     color: #646970;

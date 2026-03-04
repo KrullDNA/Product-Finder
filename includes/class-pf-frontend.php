@@ -99,6 +99,8 @@ class PF_Frontend {
                 'start_over'   => __( 'Start Over', 'product-finder' ),
                 'complete'     => __( 'Complete', 'product-finder' ),
                 'add_to_cart'  => __( 'Add to Cart', 'product-finder' ),
+                'tab_day'      => __( 'Day', 'product-finder' ),
+                'tab_night'    => __( 'Night', 'product-finder' ),
             ),
         ) );
 

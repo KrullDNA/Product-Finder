@@ -12,6 +12,7 @@
         initSortable();
         bindEvents();
         applyFinderType( getFinderType() );
+        applyDayNight();
     });
 
     /**
@@ -79,6 +80,18 @@
         });
     }
 
+    /**
+     * Show or hide all result-set pickers based on the Day/Night checkbox.
+     */
+    function applyDayNight() {
+        var enabled = $('input[name="pf_options[enable_day_night]"]').is(':checked');
+        if ( enabled ) {
+            $('.pf-product-set-picker').show();
+        } else {
+            $('.pf-product-set-picker').hide();
+        }
+    }
+
     function initExistingIndices() {
         // Find the highest existing indices so new items don't collide
         $('.pf-question').each(function () {
@@ -130,6 +143,11 @@
         // Finder type toggle
         $(document).on('change', 'input[name="pf_options[finder_type]"]', function () {
             applyFinderType( $(this).val() );
+        });
+
+        // Day/Night toggle
+        $(document).on('change', 'input[name="pf_options[enable_day_night]"]', function () {
+            applyDayNight();
         });
 
         // Variation select change – update hidden input
@@ -336,6 +354,11 @@
         if ( getFinderType() === 'beauty' ) {
             $row.find('.pf-variation-picker').show();
             loadVariationsForRow( $row, prodId );
+        }
+
+        // If Day/Night is enabled, show the set picker.
+        if ( $('input[name="pf_options[enable_day_night]"]').is(':checked') ) {
+            $row.find('.pf-product-set-picker').show();
         }
     }
 
