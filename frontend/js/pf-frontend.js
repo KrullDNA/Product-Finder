@@ -14,6 +14,8 @@
         this.options    = $el.data('options') || {};
         this.current    = 0;
         this.answers    = {};  // { questionIndex: [answerIndices] }
+        this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
+        this.history    = [];  // navigation stack: [{ type:'question', qi:N }, { type:'followup', qi:N, ai:M }, ...]
         this.totalQ     = this.questions.length;
 
         this.$progress      = $el.find('.pf-progress-fill');
@@ -31,6 +33,7 @@
         init: function () {
             if (!this.totalQ) return;
             this.applyI18n();
+            this.history.push({ type: 'question', qi: 0 });
             this.renderQuestion(0);
             this.updateProgress();
             this.bindGlobal();
@@ -205,54 +208,174 @@
             this.$container.find('.pf-question-slide').addClass('pf-slide-in');
         },
 
+        /* ───────── Render follow-up question ───────── */
+
+        renderFollowupQuestion: function (qi, ai) {
+            var fu = this.questions[qi].answers[ai].follow_up;
+            if (!fu) return;
+
+            var suppress = this._suppressTouch;
+            this._suppressTouch = false;
+            var noPtr = suppress ? ' pf-no-pointer' : '';
+
+            var hasImages = fu.answers.some(function (a) { return !!a.image; });
+            var html = '<div class="pf-question-slide pf-followup-slide" data-qi="' + qi + '" data-ai="' + ai + '">';
+
+            var instructionText = fu.instruction || (fu.multiple ? 'Select all that apply' : 'Select one option');
+
+            if (hasImages) {
+                html += '<h2 class="pf-question-text pf-question-text--center">' + this.escHtml(fu.text) + '</h2>';
+                html += '<p class="pf-question-instruction pf-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                html += '<div class="pf-answers-grid pf-answers-grid--images">';
+                for (var i = 0; i < fu.answers.length; i++) {
+                    var a = fu.answers[i];
+                    var selected = this.isFollowupSelected(qi, ai, i) ? ' pf-selected' : '';
+                    html += '<div class="pf-answer-option pf-answer-option--image' + selected + noPtr + '" data-ai="' + i + '">';
+                    if (a.image) {
+                        html += '<div class="pf-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
+                    }
+                    html += '<span class="pf-answer-text">' + this.escHtml(a.text) + '</span>';
+                    if (a.description) {
+                        html += '<span class="pf-answer-desc">' + this.escHtml(a.description) + '</span>';
+                    }
+                    if (fu.multiple) {
+                        html += '<span class="pf-checkbox"><span class="pf-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+            } else {
+                html += '<div class="pf-text-layout">';
+                html += '<div class="pf-text-left">';
+                html += '<h2 class="pf-question-text">' + this.escHtml(fu.text) + '</h2>';
+                html += '<p class="pf-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                html += '</div>';
+                html += '<div class="pf-text-right">';
+                html += '<div class="pf-answers-grid pf-answers-grid--text">';
+                for (var j = 0; j < fu.answers.length; j++) {
+                    var b = fu.answers[j];
+                    var sel = this.isFollowupSelected(qi, ai, j) ? ' pf-selected' : '';
+                    html += '<div class="pf-answer-option pf-answer-option--text' + sel + noPtr + '" data-ai="' + j + '">';
+                    html += '<span class="pf-answer-text">' + this.escHtml(b.text) + '</span>';
+                    if (fu.multiple) {
+                        html += '<span class="pf-checkbox"><span class="pf-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            // Navigation buttons – always show back for follow-ups
+            html += '<div class="pf-nav-buttons">';
+            html += '<button type="button" class="pf-btn pf-btn-secondary pf-btn-back">' + pfFrontend.i18n.back + '</button>';
+            if (fu.multiple) {
+                var key = qi + '_' + ai;
+                var hasSelection = this.followupAnswers[key] && this.followupAnswers[key].length > 0;
+                html += '<button type="button" class="pf-btn pf-btn-primary pf-btn-continue' + (hasSelection ? '' : ' pf-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + pfFrontend.i18n.next + '</button>';
+            }
+            html += '</div>';
+
+            html += '</div>';
+
+            this.$container.html(html);
+
+            if (suppress) {
+                var $answers = this.$container.find('.pf-answer-option');
+                setTimeout(function () { $answers.removeClass('pf-no-pointer'); }, 400);
+            }
+
+            this.$container.find('.pf-question-slide').addClass('pf-slide-in');
+        },
+
         /* ───────── Answer click ───────── */
 
         handleAnswerClick: function ($opt) {
-            var qi = this.current;
+            var $slide = this.$container.find('.pf-question-slide');
+            var isFollowup = $slide.hasClass('pf-followup-slide');
             var ai = $opt.data('ai');
-            var q  = this.questions[qi];
 
-            if (q.multiple) {
-                // Toggle selection
-                $opt.toggleClass('pf-selected');
-                if (!this.answers[qi]) this.answers[qi] = [];
-                var pos = this.answers[qi].indexOf(ai);
-                if (pos === -1) {
-                    this.answers[qi].push(ai);
+            if (isFollowup) {
+                // Follow-up answer click
+                var fuQi = $slide.data('qi');
+                var fuAi = $slide.data('ai');
+                var key = fuQi + '_' + fuAi;
+                var fu = this.questions[fuQi].answers[fuAi].follow_up;
+
+                if (fu.multiple) {
+                    $opt.toggleClass('pf-selected');
+                    if (!this.followupAnswers[key]) this.followupAnswers[key] = [];
+                    var pos = this.followupAnswers[key].indexOf(ai);
+                    if (pos === -1) {
+                        this.followupAnswers[key].push(ai);
+                    } else {
+                        this.followupAnswers[key].splice(pos, 1);
+                    }
+                    var $btn = this.$container.find('.pf-btn-continue');
+                    if (this.followupAnswers[key].length > 0) {
+                        $btn.removeClass('pf-btn-disabled').prop('disabled', false);
+                    } else {
+                        $btn.addClass('pf-btn-disabled').prop('disabled', true);
+                    }
                 } else {
-                    this.answers[qi].splice(pos, 1);
-                }
-                // Enable/disable continue button
-                var $btn = this.$container.find('.pf-btn-continue');
-                if (this.answers[qi].length > 0) {
-                    $btn.removeClass('pf-btn-disabled').prop('disabled', false);
-                } else {
-                    $btn.addClass('pf-btn-disabled').prop('disabled', true);
+                    this.$container.find('.pf-answer-option').removeClass('pf-selected');
+                    $opt.addClass('pf-selected');
+                    this.followupAnswers[key] = [ai];
+
+                    var self = this;
+                    setTimeout(function () {
+                        $slide.addClass('pf-slide-out');
+                        setTimeout(function () {
+                            self._suppressTouch = true;
+                            self.goNext();
+                        }, 280);
+                    }, 200);
                 }
             } else {
-                // Single select: record and advance
-                this.$container.find('.pf-answer-option').removeClass('pf-selected');
-                $opt.addClass('pf-selected');
-                this.answers[qi] = [ai];
+                // Main question answer click
+                var qi = this.current;
+                var q  = this.questions[qi];
 
-                // Fade the current question out, then render the next one.
-                // The fade-out gap ensures no element sits under the finger
-                // when the new answers appear (prevents ghost hover on touch).
-                var self = this;
-                var $slide = this.$container.find('.pf-question-slide');
-                setTimeout(function () {
-                    $slide.addClass('pf-slide-out');
-                    // Wait for the fade-out animation (250ms) before rendering
+                if (q.multiple) {
+                    $opt.toggleClass('pf-selected');
+                    if (!this.answers[qi]) this.answers[qi] = [];
+                    var pos = this.answers[qi].indexOf(ai);
+                    if (pos === -1) {
+                        this.answers[qi].push(ai);
+                    } else {
+                        this.answers[qi].splice(pos, 1);
+                    }
+                    var $btn = this.$container.find('.pf-btn-continue');
+                    if (this.answers[qi].length > 0) {
+                        $btn.removeClass('pf-btn-disabled').prop('disabled', false);
+                    } else {
+                        $btn.addClass('pf-btn-disabled').prop('disabled', true);
+                    }
+                } else {
+                    this.$container.find('.pf-answer-option').removeClass('pf-selected');
+                    $opt.addClass('pf-selected');
+                    this.answers[qi] = [ai];
+
+                    var self = this;
                     setTimeout(function () {
-                        self._suppressTouch = true;
-                        self.goNext();
-                    }, 280);
-                }, 200);
+                        $slide.addClass('pf-slide-out');
+                        setTimeout(function () {
+                            self._suppressTouch = true;
+                            self.goNext();
+                        }, 280);
+                    }, 200);
+                }
             }
         },
 
         isSelected: function (qi, ai) {
             return this.answers[qi] && this.answers[qi].indexOf(ai) !== -1;
+        },
+
+        isFollowupSelected: function (qi, parentAi, fai) {
+            var key = qi + '_' + parentAi;
+            return this.followupAnswers[key] && this.followupAnswers[key].indexOf(fai) !== -1;
         },
 
         /* ───────── Navigation ───────── */
@@ -269,24 +392,67 @@
         },
 
         goNext: function () {
-            var self = this;
-            if (this.current < this.totalQ - 1) {
-                this.current++;
-                this.renderQuestion(this.current);
+            var lastEntry = this.history[this.history.length - 1];
+
+            if (lastEntry.type === 'followup') {
+                // Coming from a follow-up, advance to next main question
+                var nextQi = lastEntry.qi + 1;
+                if (nextQi >= this.totalQ) {
+                    this.showEmail();
+                    return;
+                }
+                this.current = nextQi;
+                this.history.push({ type: 'question', qi: nextQi });
+                this.renderQuestion(nextQi);
+                this.updateProgress();
+                return;
+            }
+
+            // Coming from a main question – check if selected answer has a follow-up
+            var qi = lastEntry.qi;
+            var q = this.questions[qi];
+            var selected = this.answers[qi] || [];
+            var followup = null;
+
+            for (var i = 0; i < selected.length; i++) {
+                var ai = selected[i];
+                var a = q.answers[ai];
+                if (a && a.follow_up && a.follow_up.text && a.follow_up.answers && a.follow_up.answers.length) {
+                    followup = { qi: qi, ai: ai };
+                    break;
+                }
+            }
+
+            if (followup) {
+                this.history.push({ type: 'followup', qi: followup.qi, ai: followup.ai });
+                this.renderFollowupQuestion(followup.qi, followup.ai);
                 this.updateProgress();
             } else {
-                // All questions answered – show email screen
-                this.showEmail();
+                var nextQi = qi + 1;
+                if (nextQi >= this.totalQ) {
+                    this.showEmail();
+                    return;
+                }
+                this.current = nextQi;
+                this.history.push({ type: 'question', qi: nextQi });
+                this.renderQuestion(nextQi);
+                this.updateProgress();
             }
         },
 
         goBack: function () {
-            var self = this;
-            if (this.current > 0) {
-                this.current--;
-                this.renderQuestion(this.current);
-                this.updateProgress();
+            if (this.history.length <= 1) return;
+
+            this.history.pop();
+            var prev = this.history[this.history.length - 1];
+
+            if (prev.type === 'followup') {
+                this.renderFollowupQuestion(prev.qi, prev.ai);
+            } else {
+                this.current = prev.qi;
+                this.renderQuestion(prev.qi);
             }
+            this.updateProgress();
         },
 
         /* ───────── Progress bar ───────── */
@@ -377,7 +543,8 @@
                 action: 'pf_compute_results',
                 nonce: pfFrontend.nonce,
                 finder_id: this.finderId,
-                answers: JSON.stringify(this.answers)
+                answers: JSON.stringify(this.answers),
+                followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
                 // Debug: log the full AJAX response
                 if (res && res.data && res.data.debug) {
@@ -828,6 +995,8 @@
         startOver: function () {
             this.current = 0;
             this.answers = {};
+            this.followupAnswers = {};
+            this.history = [{ type: 'question', qi: 0 }];
             this._cachedResults = null;
 
             this.$resultsScreen.hide().css('opacity', '');

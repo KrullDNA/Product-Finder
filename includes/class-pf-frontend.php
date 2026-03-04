@@ -117,11 +117,35 @@ class PF_Frontend {
             );
             foreach ( $q['answers'] as $a ) {
                 $image_url = ! empty( $a['image_id'] ) ? wp_get_attachment_image_url( $a['image_id'], 'large' ) : '';
-                $q_data['answers'][] = array(
+                $a_data = array(
                     'text'        => $a['text'],
                     'description' => $a['description'] ?? '',
                     'image'       => $image_url,
                 );
+
+                // Include follow-up question data if present
+                if ( ! empty( $a['follow_up'] ) && ! empty( $a['follow_up']['text'] ) ) {
+                    $fu = $a['follow_up'];
+                    $fu_data = array(
+                        'text'        => $fu['text'],
+                        'instruction' => $fu['instruction'] ?? '',
+                        'multiple'    => ! empty( $fu['multiple'] ),
+                        'answers'     => array(),
+                    );
+                    if ( ! empty( $fu['answers'] ) ) {
+                        foreach ( $fu['answers'] as $fa ) {
+                            $fa_image = ! empty( $fa['image_id'] ) ? wp_get_attachment_image_url( $fa['image_id'], 'large' ) : '';
+                            $fu_data['answers'][] = array(
+                                'text'        => $fa['text'] ?? '',
+                                'description' => $fa['description'] ?? '',
+                                'image'       => $fa_image,
+                            );
+                        }
+                    }
+                    $a_data['follow_up'] = $fu_data;
+                }
+
+                $q_data['answers'][] = $a_data;
             }
             $inline_data[] = $q_data;
         }

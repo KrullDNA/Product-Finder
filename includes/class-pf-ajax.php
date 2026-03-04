@@ -183,8 +183,12 @@ class PF_Ajax {
         $ob_baseline = ob_get_level();
         ob_start();
 
-        $finder_id = absint( $_POST['finder_id'] ?? 0 );
-        $answers   = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
+        $finder_id       = absint( $_POST['finder_id'] ?? 0 );
+        $answers         = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
+        $followup_answers = json_decode( stripslashes( $_POST['followup_answers'] ?? '{}' ), true );
+        if ( ! is_array( $followup_answers ) ) {
+            $followup_answers = array();
+        }
 
         if ( ! $finder_id || ! is_array( $answers ) ) {
             $this->ob_clean_to( $ob_baseline );
@@ -293,6 +297,91 @@ class PF_Ajax {
                         'ai'            => $ai,
                         'question_text' => $q['text'],
                         'answer_text'   => $a['text'],
+                    );
+                }
+            }
+        }
+
+        /* ── Follow-up answer scoring ── */
+        // Keys are "qi_ai", values are arrays of selected follow-up answer indices.
+        foreach ( $followup_answers as $fu_key => $fu_selected ) {
+            $parts = explode( '_', $fu_key );
+            if ( count( $parts ) !== 2 ) {
+                continue;
+            }
+            $fu_qi = absint( $parts[0] );
+            $fu_ai = absint( $parts[1] );
+
+            if ( ! isset( $questions[ $fu_qi ] ) || ! isset( $questions[ $fu_qi ]['answers'][ $fu_ai ] ) ) {
+                continue;
+            }
+            $parent_answer = $questions[ $fu_qi ]['answers'][ $fu_ai ];
+            if ( empty( $parent_answer['follow_up'] ) || empty( $parent_answer['follow_up']['answers'] ) ) {
+                continue;
+            }
+            $fu = $parent_answer['follow_up'];
+            $total_answered++;
+
+            foreach ( (array) $fu_selected as $fai ) {
+                $fai = absint( $fai );
+                if ( ! isset( $fu['answers'][ $fai ] ) ) {
+                    continue;
+                }
+                $fa = $fu['answers'][ $fai ];
+
+                if ( empty( $fa['products'] ) ) {
+                    continue;
+                }
+
+                $max_rank = 1;
+                foreach ( $fa['products'] as $p ) {
+                    if ( (int) $p['rank'] > $max_rank ) {
+                        $max_rank = (int) $p['rank'];
+                    }
+                }
+                $max_possible += $max_rank;
+
+                foreach ( $fa['products'] as $p ) {
+                    $pid             = absint( $p['id'] );
+                    $variation_id    = absint( $p['variation_id'] ?? 0 );
+                    $rank            = absint( $p['rank'] );
+                    $result_category = sanitize_key( $p['result_category'] ?? '' );
+                    $result_set      = sanitize_key( $p['result_set'] ?? 'both' );
+                    if ( ! $pid ) {
+                        continue;
+                    }
+
+                    $key   = ( $is_beauty && $variation_id ) ? $pid . ':' . $variation_id : (string) $pid;
+                    $score = $max_rank + 1 - $rank;
+
+                    if ( ! isset( $product_scores[ $key ] ) ) {
+                        $product_scores[ $key ]    = 0;
+                        $product_questions[ $key ] = array();
+                        $product_answers[ $key ]   = array();
+                        $key_map[ $key ]           = array(
+                            'pid'             => $pid,
+                            'variation_id'    => $variation_id,
+                            'result_category' => $result_category,
+                            'result_set'      => $result_set,
+                        );
+                    }
+                    if ( $result_category && empty( $key_map[ $key ]['result_category'] ) ) {
+                        $key_map[ $key ]['result_category'] = $result_category;
+                    }
+                    $product_scores[ $key ] += $score;
+
+                    // Use a synthetic question index for coverage tracking.
+                    $fu_track_qi = 'fu_' . $fu_qi . '_' . $fu_ai;
+                    if ( ! in_array( $fu_track_qi, $product_questions[ $key ], true ) ) {
+                        $product_questions[ $key ][] = $fu_track_qi;
+                    }
+
+                    $product_answers[ $key ][] = array(
+                        'qi'            => $fu_qi,
+                        'ai'            => $fu_ai,
+                        'fai'           => $fai,
+                        'question_text' => $fu['text'],
+                        'answer_text'   => $fa['text'],
                     );
                 }
             }

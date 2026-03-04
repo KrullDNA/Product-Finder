@@ -380,6 +380,16 @@ class PF_Admin {
         <script type="text/html" id="tmpl-pf-product-row">
             <?php $this->render_product_row_template( '{{data.qi}}', '{{data.ai}}', '{{data.pi}}', array() ); ?>
         </script>
+
+        <!-- Hidden template for follow-up answer -->
+        <script type="text/html" id="tmpl-pf-followup-answer">
+            <?php $this->render_followup_answer_template( '{{data.qi}}', '{{data.ai}}', '{{data.fai}}', array() ); ?>
+        </script>
+
+        <!-- Hidden template for follow-up product row -->
+        <script type="text/html" id="tmpl-pf-followup-product-row">
+            <?php $this->render_followup_product_row_template( '{{data.qi}}', '{{data.ai}}', '{{data.fai}}', '{{data.pi}}', array() ); ?>
+        </script>
         <?php
     }
 
@@ -441,9 +451,18 @@ class PF_Admin {
             'description' => '',
             'image_id'    => '',
             'products'    => array(),
+            'follow_up'   => array(),
         ) );
         $name_prefix = "pf_questions[{$qi}][answers][{$ai}]";
         $thumb_url   = $answer['image_id'] ? wp_get_attachment_image_url( $answer['image_id'], 'thumbnail' ) : '';
+        $has_followup = ! empty( $answer['follow_up']['text'] ) || ! empty( $answer['follow_up']['answers'] );
+        $fu_prefix    = $name_prefix . '[follow_up]';
+        $fu           = wp_parse_args( (array) ( $answer['follow_up'] ?? array() ), array(
+            'text'        => '',
+            'instruction' => '',
+            'multiple'    => 0,
+            'answers'     => array(),
+        ) );
         ?>
         <div class="pf-answer" data-ai="<?php echo esc_attr( $ai ); ?>">
             <div class="pf-answer-header pf-drag-handle-answer">
@@ -487,7 +506,158 @@ class PF_Admin {
                         ?>
                     </div>
                 </div>
+                <!-- Follow-up question -->
+                <div class="pf-followup-wrap" <?php echo $has_followup ? '' : 'style="display:none;"'; ?>>
+                    <div class="pf-followup-header">
+                        <span class="dashicons dashicons-admin-comments"></span>
+                        <strong><?php esc_html_e( 'Follow-up Question', 'product-finder' ); ?></strong>
+                        <button type="button" class="pf-remove-followup button-link" title="<?php esc_attr_e( 'Remove Follow-up', 'product-finder' ); ?>"><span class="dashicons dashicons-no-alt"></span></button>
+                    </div>
+                    <div class="pf-followup-body">
+                        <p>
+                            <label><?php esc_html_e( 'Follow-up Question Text', 'product-finder' ); ?></label><br>
+                            <input type="text" name="<?php echo esc_attr( $fu_prefix ); ?>[text]" value="<?php echo esc_attr( $fu['text'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. What shade of brunette?', 'product-finder' ); ?>">
+                        </p>
+                        <p>
+                            <label><?php esc_html_e( 'Instruction', 'product-finder' ); ?></label><br>
+                            <input type="text" name="<?php echo esc_attr( $fu_prefix ); ?>[instruction]" value="<?php echo esc_attr( $fu['instruction'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional', 'product-finder' ); ?>">
+                        </p>
+                        <p>
+                            <label>
+                                <input type="checkbox" name="<?php echo esc_attr( $fu_prefix ); ?>[multiple]" value="1" <?php checked( $fu['multiple'], 1 ); ?>>
+                                <?php esc_html_e( 'Allow multiple answers', 'product-finder' ); ?>
+                            </label>
+                        </p>
+                        <div class="pf-followup-answers">
+                            <h4><?php esc_html_e( 'Follow-up Answers', 'product-finder' ); ?></h4>
+                            <div class="pf-followup-answers-list">
+                                <?php
+                                if ( ! empty( $fu['answers'] ) ) {
+                                    foreach ( $fu['answers'] as $fai => $fa ) {
+                                        $this->render_followup_answer_template( $qi, $ai, $fai, $fa );
+                                    }
+                                }
+                                ?>
+                            </div>
+                            <p><button type="button" class="button pf-add-followup-answer"><?php esc_html_e( '+ Add Follow-up Answer', 'product-finder' ); ?></button></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="pf-followup-add" <?php echo $has_followup ? 'style="display:none;"' : ''; ?>>
+                    <button type="button" class="button pf-add-followup"><span class="dashicons dashicons-admin-comments"></span> <?php esc_html_e( 'Add Follow-up Question', 'product-finder' ); ?></button>
+                    <span class="description"><?php esc_html_e( 'Show an extra question when this answer is selected', 'product-finder' ); ?></span>
+                </div>
             </div>
+        </div>
+        <?php
+    }
+
+    private function render_followup_answer_template( $qi, $ai, $fai, $fa ) {
+        $fa = wp_parse_args( $fa, array(
+            'text'        => '',
+            'description' => '',
+            'image_id'    => '',
+            'products'    => array(),
+        ) );
+        $name_prefix = "pf_questions[{$qi}][answers][{$ai}][follow_up][answers][{$fai}]";
+        $thumb_url   = $fa['image_id'] ? wp_get_attachment_image_url( $fa['image_id'], 'thumbnail' ) : '';
+        ?>
+        <div class="pf-followup-answer" data-fai="<?php echo esc_attr( $fai ); ?>">
+            <div class="pf-followup-answer-header">
+                <span class="pf-followup-answer-label"><?php echo $fa['text'] ? esc_html( $fa['text'] ) : esc_html__( 'New Answer', 'product-finder' ); ?></span>
+                <button type="button" class="pf-remove-followup-answer button-link" title="<?php esc_attr_e( 'Delete', 'product-finder' ); ?>"><span class="dashicons dashicons-trash"></span></button>
+            </div>
+            <div class="pf-followup-answer-body">
+                <p>
+                    <label><?php esc_html_e( 'Answer Text', 'product-finder' ); ?></label><br>
+                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $fa['text'] ); ?>" class="widefat pf-followup-answer-text-input">
+                </p>
+                <p>
+                    <label><?php esc_html_e( 'Description', 'product-finder' ); ?></label><br>
+                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[description]" value="<?php echo esc_attr( $fa['description'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional', 'product-finder' ); ?>">
+                </p>
+                <div class="pf-answer-image-wrap">
+                    <label><?php esc_html_e( 'Image', 'product-finder' ); ?></label><br>
+                    <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[image_id]" value="<?php echo esc_attr( $fa['image_id'] ); ?>" class="pf-image-id">
+                    <div class="pf-image-preview" <?php echo $thumb_url ? '' : 'style="display:none;"'; ?>>
+                        <img src="<?php echo esc_url( $thumb_url ); ?>" alt="">
+                        <button type="button" class="pf-remove-image button-link" title="<?php esc_attr_e( 'Remove Image', 'product-finder' ); ?>"><span class="dashicons dashicons-no-alt"></span> <?php esc_html_e( 'Remove', 'product-finder' ); ?></button>
+                    </div>
+                    <button type="button" class="button pf-select-image"><?php esc_html_e( 'Select Image', 'product-finder' ); ?></button>
+                </div>
+                <div class="pf-answer-products-wrap">
+                    <label><?php esc_html_e( 'Products', 'product-finder' ); ?></label><br>
+                    <input type="text" class="widefat pf-product-search" placeholder="<?php esc_attr_e( 'Search for a product…', 'product-finder' ); ?>" autocomplete="off">
+                    <div class="pf-product-search-results"></div>
+                    <div class="pf-products-list">
+                        <?php
+                        if ( ! empty( $fa['products'] ) ) {
+                            foreach ( $fa['products'] as $pi => $prod ) {
+                                $this->render_followup_product_row_template( $qi, $ai, $fai, $pi, $prod );
+                            }
+                        }
+                        ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    private function render_followup_product_row_template( $qi, $ai, $fai, $pi, $prod ) {
+        $prod = wp_parse_args( $prod, array(
+            'id'              => '',
+            'variation_id'    => '',
+            'rank'            => 1,
+            'result_category' => '',
+            'result_set'      => 'both',
+        ) );
+        $name_prefix  = "pf_questions[{$qi}][answers][{$ai}][follow_up][answers][{$fai}][products][{$pi}]";
+        $product_name = $prod['id'] ? get_the_title( $prod['id'] ) : '{{data.name}}';
+
+        $variation_name = '';
+        if ( $prod['variation_id'] && function_exists( 'wc_get_product' ) ) {
+            $variation = wc_get_product( $prod['variation_id'] );
+            if ( $variation && $variation->is_type( 'variation' ) ) {
+                $attrs = $variation->get_attributes();
+                $variation_name = implode( ', ', array_values( $attrs ) );
+            }
+        }
+        ?>
+        <div class="pf-product-row" data-pi="<?php echo esc_attr( $pi ); ?>" data-product-id="<?php echo esc_attr( $prod['id'] ); ?>">
+            <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[id]" value="<?php echo esc_attr( $prod['id'] ); ?>" class="pf-product-id">
+            <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[variation_id]" value="<?php echo esc_attr( $prod['variation_id'] ); ?>" class="pf-variation-id">
+            <span class="pf-product-name"><?php echo esc_html( $product_name ); ?></span>
+            <div class="pf-variation-picker" style="display:none;">
+                <select class="pf-variation-select" data-current="<?php echo esc_attr( $prod['variation_id'] ); ?>">
+                    <option value=""><?php esc_html_e( '— Select variation —', 'product-finder' ); ?></option>
+                    <?php if ( $prod['variation_id'] && $variation_name ) : ?>
+                        <option value="<?php echo esc_attr( $prod['variation_id'] ); ?>" selected><?php echo esc_html( $variation_name ); ?></option>
+                    <?php endif; ?>
+                </select>
+            </div>
+            <label class="pf-product-category-label pf-product-category-picker" style="display:none;"><?php esc_html_e( 'Category:', 'product-finder' ); ?>
+                <select name="<?php echo esc_attr( $name_prefix ); ?>[result_category]" class="pf-product-category">
+                    <option value=""><?php esc_html_e( '— None —', 'product-finder' ); ?></option>
+                    <option value="base" <?php selected( $prod['result_category'], 'base' ); ?>><?php esc_html_e( 'Base / Foundation', 'product-finder' ); ?></option>
+                    <option value="concealer" <?php selected( $prod['result_category'], 'concealer' ); ?>><?php esc_html_e( 'Concealer', 'product-finder' ); ?></option>
+                    <option value="lip" <?php selected( $prod['result_category'], 'lip' ); ?>><?php esc_html_e( 'Lip', 'product-finder' ); ?></option>
+                    <option value="cheek" <?php selected( $prod['result_category'], 'cheek' ); ?>><?php esc_html_e( 'Cheek', 'product-finder' ); ?></option>
+                    <option value="lip_cheek" <?php selected( $prod['result_category'], 'lip_cheek' ); ?>><?php esc_html_e( 'Lip & Cheek', 'product-finder' ); ?></option>
+                    <option value="eye" <?php selected( $prod['result_category'], 'eye' ); ?>><?php esc_html_e( 'Eye', 'product-finder' ); ?></option>
+                </select>
+            </label>
+            <label class="pf-product-set-label pf-product-set-picker" style="display:none;"><?php esc_html_e( 'Set:', 'product-finder' ); ?>
+                <select name="<?php echo esc_attr( $name_prefix ); ?>[result_set]" class="pf-product-set">
+                    <option value="both" <?php selected( $prod['result_set'], 'both' ); ?>><?php esc_html_e( 'Both', 'product-finder' ); ?></option>
+                    <option value="day" <?php selected( $prod['result_set'], 'day' ); ?>><?php esc_html_e( 'Day', 'product-finder' ); ?></option>
+                    <option value="night" <?php selected( $prod['result_set'], 'night' ); ?>><?php esc_html_e( 'Night', 'product-finder' ); ?></option>
+                </select>
+            </label>
+            <label class="pf-product-rank-label"><?php esc_html_e( 'Rank:', 'product-finder' ); ?>
+                <input type="number" name="<?php echo esc_attr( $name_prefix ); ?>[rank]" value="<?php echo esc_attr( $prod['rank'] ); ?>" min="1" class="pf-product-rank small-text">
+            </label>
+            <button type="button" class="pf-remove-product button-link" title="<?php esc_attr_e( 'Remove Product', 'product-finder' ); ?>"><span class="dashicons dashicons-trash"></span></button>
         </div>
         <?php
     }
@@ -650,6 +820,48 @@ class PF_Admin {
                             );
                         }
                     }
+                    // Follow-up question (optional)
+                    $answer['follow_up'] = array();
+                    if ( ! empty( $a['follow_up'] ) && is_array( $a['follow_up'] ) && ! empty( $a['follow_up']['text'] ) ) {
+                        $fu = array(
+                            'text'        => sanitize_text_field( $a['follow_up']['text'] ?? '' ),
+                            'instruction' => sanitize_text_field( $a['follow_up']['instruction'] ?? '' ),
+                            'multiple'    => ! empty( $a['follow_up']['multiple'] ) ? 1 : 0,
+                            'answers'     => array(),
+                        );
+                        if ( ! empty( $a['follow_up']['answers'] ) && is_array( $a['follow_up']['answers'] ) ) {
+                            foreach ( $a['follow_up']['answers'] as $fa ) {
+                                $fu_answer = array(
+                                    'text'        => sanitize_text_field( $fa['text'] ?? '' ),
+                                    'description' => sanitize_text_field( $fa['description'] ?? '' ),
+                                    'image_id'    => absint( $fa['image_id'] ?? 0 ),
+                                    'products'    => array(),
+                                );
+                                if ( ! empty( $fa['products'] ) && is_array( $fa['products'] ) ) {
+                                    foreach ( $fa['products'] as $fp ) {
+                                        $fu_cat = sanitize_key( $fp['result_category'] ?? '' );
+                                        if ( ! in_array( $fu_cat, $valid_categories, true ) ) {
+                                            $fu_cat = '';
+                                        }
+                                        $fu_set = sanitize_key( $fp['result_set'] ?? 'both' );
+                                        if ( ! in_array( $fu_set, array( 'both', 'day', 'night' ), true ) ) {
+                                            $fu_set = 'both';
+                                        }
+                                        $fu_answer['products'][] = array(
+                                            'id'              => absint( $fp['id'] ?? 0 ),
+                                            'variation_id'    => absint( $fp['variation_id'] ?? 0 ),
+                                            'rank'            => absint( $fp['rank'] ?? 1 ),
+                                            'result_category' => $fu_cat,
+                                            'result_set'      => $fu_set,
+                                        );
+                                    }
+                                }
+                                $fu['answers'][] = $fu_answer;
+                            }
+                        }
+                        $answer['follow_up'] = $fu;
+                    }
+
                     $question['answers'][] = $answer;
                 }
             }

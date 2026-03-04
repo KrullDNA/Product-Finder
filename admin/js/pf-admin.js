@@ -1,9 +1,10 @@
 (function ($) {
     'use strict';
 
-    var questionIndex = 0;
-    var answerIndex   = 0;
-    var productIndex  = 0;
+    var questionIndex       = 0;
+    var answerIndex         = 0;
+    var productIndex        = 0;
+    var followupAnswerIndex = 0;
 
     /* ───────────── Init ───────────── */
 
@@ -114,6 +115,12 @@
                 productIndex = pi + 1;
             }
         });
+        $('.pf-followup-answer').each(function () {
+            var fai = parseInt($(this).data('fai'), 10);
+            if (!isNaN(fai) && fai >= followupAnswerIndex) {
+                followupAnswerIndex = fai + 1;
+            }
+        });
     }
 
     /* ───────────── Sortable ───────────── */
@@ -217,6 +224,25 @@
 
         // Remove product
         $(document).on('click', '.pf-remove-product', removeProduct);
+
+        // Follow-up question controls
+        $(document).on('click', '.pf-add-followup', addFollowup);
+        $(document).on('click', '.pf-remove-followup', removeFollowup);
+        $(document).on('click', '.pf-add-followup-answer', addFollowupAnswer);
+        $(document).on('click', '.pf-remove-followup-answer', function (e) {
+            e.stopPropagation();
+            if (confirm(pfAdmin.i18n.confirm_del)) {
+                $(this).closest('.pf-followup-answer').slideUp(200, function () { $(this).remove(); });
+            }
+        });
+        $(document).on('input', '.pf-followup-answer-text-input', function () {
+            var val = $(this).val() || 'New Answer';
+            $(this).closest('.pf-followup-answer').find('.pf-followup-answer-label').first().text(val);
+        });
+        $(document).on('click', '.pf-followup-answer-header', function (e) {
+            if ($(e.target).closest('.pf-remove-followup-answer').length) return;
+            $(this).closest('.pf-followup-answer').find('.pf-followup-answer-body').slideToggle(200);
+        });
 
         // Close search results on outside click
         $(document).on('click', function (e) {
@@ -328,19 +354,31 @@
     function selectProduct() {
         var $this    = $(this);
         var $wrap    = $this.closest('.pf-answer-products-wrap');
-        var $answer  = $this.closest('.pf-answer');
         var $question= $this.closest('.pf-question');
 
         var qi = $question.data('qi');
-        var ai = $answer.data('ai');
         var pi = productIndex;
         productIndex++;
 
         var prodId   = $this.data('id');
         var prodName = $this.data('name');
 
-        var tmpl = wp.template('pf-product-row');
-        var html = tmpl({ qi: qi, ai: ai, pi: pi, name: prodName });
+        // Detect if we're inside a follow-up answer
+        var $followupAnswer = $this.closest('.pf-followup-answer');
+        var tmpl, html;
+
+        if ( $followupAnswer.length ) {
+            var $answer = $followupAnswer.closest('.pf-answer');
+            var ai  = $answer.data('ai');
+            var fai = $followupAnswer.data('fai');
+            tmpl = wp.template('pf-followup-product-row');
+            html = tmpl({ qi: qi, ai: ai, fai: fai, pi: pi, name: prodName });
+        } else {
+            var $answer = $this.closest('.pf-answer');
+            var ai = $answer.data('ai');
+            tmpl = wp.template('pf-product-row');
+            html = tmpl({ qi: qi, ai: ai, pi: pi, name: prodName });
+        }
 
         // Parse the HTML and set the product ID
         var $row = $(html);
@@ -367,6 +405,40 @@
 
     function removeProduct() {
         $(this).closest('.pf-product-row').remove();
+    }
+
+    /* ───────────── Follow-up Questions ───────────── */
+
+    function addFollowup() {
+        var $answer = $(this).closest('.pf-answer');
+        $answer.find('.pf-followup-wrap').slideDown(200);
+        $answer.find('.pf-followup-add').hide();
+    }
+
+    function removeFollowup() {
+        var $answer = $(this).closest('.pf-answer');
+        var $wrap   = $answer.find('.pf-followup-wrap');
+        // Clear all follow-up data
+        $wrap.find('input[type="text"], input[type="hidden"]').val('');
+        $wrap.find('input[type="checkbox"]').prop('checked', false);
+        $wrap.find('.pf-followup-answers-list').empty();
+        $wrap.slideUp(200);
+        $answer.find('.pf-followup-add').show();
+    }
+
+    function addFollowupAnswer() {
+        var $answer   = $(this).closest('.pf-answer');
+        var $question = $answer.closest('.pf-question');
+        var qi  = $question.data('qi');
+        var ai  = $answer.data('ai');
+        var fai = followupAnswerIndex;
+        followupAnswerIndex++;
+
+        var tmpl = wp.template('pf-followup-answer');
+        var html = tmpl({ qi: qi, ai: ai, fai: fai });
+        var $html = $(html);
+        $answer.find('.pf-followup-answers-list').append($html);
+        $html.find('.pf-followup-answer-body').show();
     }
 
     /* ───────────── Utilities ───────────── */
