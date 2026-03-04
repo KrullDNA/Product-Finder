@@ -1242,9 +1242,15 @@ class PF_Elementor_Widget extends Widget_Base {
     /* ─── Style: Day / Night Tabs ─── */
 
     private function section_style_dn_tabs() {
+        // Registered in the Content tab because Elementor's Style tab
+        // silently drops controls that carry the 'selectors' array in
+        // this widget, while controls WITHOUT selectors in the Style tab
+        // are never persisted to the database.  The Content tab avoids
+        // both issues.  All visual styling is applied via inline <style>
+        // in render_dn_tab_inline_styles().
         $this->start_controls_section( 'section_style_dn_tabs', array(
             'label' => __( 'Day / Night Tabs', 'product-finder' ),
-            'tab'   => Controls_Manager::TAB_STYLE,
+            'tab'   => Controls_Manager::TAB_CONTENT,
         ) );
 
         $this->add_control( 'dn_tab_heading_labels', array(
@@ -1279,9 +1285,6 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'      => __( 'Tab Padding', 'product-finder' ),
             'type'       => Controls_Manager::DIMENSIONS,
             'size_units' => array( 'px', 'em' ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-dn-tab' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
-            ),
         ) );
 
         $this->add_responsive_control( 'dn_tab_gap', array(
@@ -1289,21 +1292,15 @@ class PF_Elementor_Widget extends Widget_Base {
             'type'       => Controls_Manager::SLIDER,
             'size_units' => array( 'px', 'em' ),
             'range'      => array( 'px' => array( 'min' => 0, 'max' => 60 ) ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-dn-tabs' => 'gap: {{SIZE}}{{UNIT}};',
-            ),
         ) );
 
         $this->add_responsive_control( 'dn_tabs_align', array(
-            'label'     => __( 'Tab Alignment', 'product-finder' ),
-            'type'      => Controls_Manager::CHOOSE,
-            'options'   => array(
+            'label'   => __( 'Tab Alignment', 'product-finder' ),
+            'type'    => Controls_Manager::CHOOSE,
+            'options' => array(
                 'flex-start' => array( 'title' => __( 'Left', 'product-finder' ),   'icon' => 'eicon-text-align-left' ),
                 'center'     => array( 'title' => __( 'Center', 'product-finder' ), 'icon' => 'eicon-text-align-center' ),
                 'flex-end'   => array( 'title' => __( 'Right', 'product-finder' ),  'icon' => 'eicon-text-align-right' ),
-            ),
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tabs' => 'justify-content: {{VALUE}};',
             ),
         ) );
 
@@ -1311,9 +1308,6 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'      => __( 'Tab Border Radius', 'product-finder' ),
             'type'       => Controls_Manager::DIMENSIONS,
             'size_units' => array( 'px', '%' ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-dn-tab' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
-            ),
         ) );
 
         // ── Tab state colours ──
@@ -1331,18 +1325,12 @@ class PF_Elementor_Widget extends Widget_Base {
             'label' => __( 'Normal', 'product-finder' ),
         ) );
         $this->add_control( 'dn_tab_color', array(
-            'label'     => __( 'Text Colour', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab' => 'color: {{VALUE}};',
-            ),
+            'label' => __( 'Text Colour', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->add_control( 'dn_tab_bg', array(
-            'label'     => __( 'Background', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab' => 'background-color: {{VALUE}};',
-            ),
+            'label' => __( 'Background', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->end_controls_tab();
 
@@ -1351,18 +1339,12 @@ class PF_Elementor_Widget extends Widget_Base {
             'label' => __( 'Hover', 'product-finder' ),
         ) );
         $this->add_control( 'dn_tab_hover_color', array(
-            'label'     => __( 'Text Colour', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab:hover' => 'color: {{VALUE}};',
-            ),
+            'label' => __( 'Text Colour', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->add_control( 'dn_tab_hover_bg', array(
-            'label'     => __( 'Background', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab:hover' => 'background-color: {{VALUE}};',
-            ),
+            'label' => __( 'Background', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->end_controls_tab();
 
@@ -1371,18 +1353,12 @@ class PF_Elementor_Widget extends Widget_Base {
             'label' => __( 'Active', 'product-finder' ),
         ) );
         $this->add_control( 'dn_tab_active_color', array(
-            'label'     => __( 'Text Colour', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active' => 'color: {{VALUE}};',
-            ),
+            'label' => __( 'Text Colour', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->add_control( 'dn_tab_active_bg', array(
-            'label'     => __( 'Background', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active' => 'background-color: {{VALUE}};',
-            ),
+            'label' => __( 'Background', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
         $this->end_controls_tab();
 
@@ -1397,11 +1373,8 @@ class PF_Elementor_Widget extends Widget_Base {
         ) );
 
         $this->add_control( 'dn_line_color', array(
-            'label'     => __( 'Line Colour', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tabs' => 'border-bottom-color: {{VALUE}};',
-            ),
+            'label' => __( 'Line Colour', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
 
         $this->add_responsive_control( 'dn_line_width', array(
@@ -1409,18 +1382,11 @@ class PF_Elementor_Widget extends Widget_Base {
             'type'       => Controls_Manager::SLIDER,
             'size_units' => array( 'px' ),
             'range'      => array( 'px' => array( 'min' => 0, 'max' => 10 ) ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-dn-tabs'                     => 'border-bottom-width: {{SIZE}}{{UNIT}};',
-                '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active::after' => 'height: {{SIZE}}{{UNIT}}; bottom: calc(-1 * {{SIZE}}{{UNIT}});',
-            ),
         ) );
 
         $this->add_control( 'dn_active_line_color', array(
-            'label'     => __( 'Active Line Colour', 'product-finder' ),
-            'type'      => Controls_Manager::COLOR,
-            'selectors' => array(
-                '{{WRAPPER}} .pf-dn-tab.pf-dn-tab--active::after' => 'background-color: {{VALUE}};',
-            ),
+            'label' => __( 'Active Line Colour', 'product-finder' ),
+            'type'  => Controls_Manager::COLOR,
         ) );
 
         // ── Spacing ──
@@ -1435,9 +1401,6 @@ class PF_Elementor_Widget extends Widget_Base {
             'label'      => __( 'Tabs Margin', 'product-finder' ),
             'type'       => Controls_Manager::DIMENSIONS,
             'size_units' => array( 'px', 'em' ),
-            'selectors'  => array(
-                '{{WRAPPER}} .pf-dn-tabs' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
-            ),
         ) );
 
         $this->end_controls_section();
