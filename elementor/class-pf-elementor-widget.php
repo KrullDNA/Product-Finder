@@ -1771,9 +1771,23 @@ class PF_Elementor_Widget extends Widget_Base {
             }
         }
 
-        // Check __globals__ for global color references
+        // Check raw element data
         $raw_data = $this->get_data( 'settings' );
-        $globals  = isset( $raw_data['__globals__'] ) ? $raw_data['__globals__'] : array();
+        $raw_total = count( $raw_data );
+
+        // Sample of non-DN saved settings (to confirm other sections save)
+        $other_saved = array();
+        foreach ( $raw_data as $rk => $rv ) {
+            if ( strpos( $rk, 'dn_' ) !== 0 && strpos( $rk, '__' ) !== 0 && ! is_array( $rv ) && '' !== (string) $rv ) {
+                $other_saved[] = $rk . '=' . $rv;
+                if ( count( $other_saved ) >= 5 ) {
+                    break;
+                }
+            }
+        }
+
+        // Check __globals__
+        $globals    = isset( $raw_data['__globals__'] ) ? $raw_data['__globals__'] : array();
         $dn_globals = array();
         foreach ( $globals as $gk => $gv ) {
             if ( strpos( $gk, 'dn_' ) === 0 ) {
@@ -1789,16 +1803,32 @@ class PF_Elementor_Widget extends Widget_Base {
             }
         }
 
-        echo "\n<!-- PF DN-tabs debug v3: id=" . $id
+        // Direct DB check: search _elementor_data for dn_ values
+        $post_id       = get_the_ID();
+        $raw_meta      = get_post_meta( $post_id, '_elementor_data', true );
+        $meta_has_dn   = is_string( $raw_meta ) ? ( strpos( $raw_meta, '"dn_tab_color"' ) !== false ? 'yes' : 'no' ) : 'not_string';
+        $meta_has_id   = is_string( $raw_meta ) ? ( strpos( $raw_meta, $id ) !== false ? 'yes' : 'no' ) : 'not_string';
+
+        // Extract the widget's settings JSON from the raw meta for deep inspection
+        $widget_json_snippet = '(not found)';
+        if ( is_string( $raw_meta ) && false !== ( $pos = strpos( $raw_meta, $id ) ) ) {
+            // Grab a chunk around the widget ID to see what's stored
+            $start   = max( 0, $pos - 50 );
+            $snippet = substr( $raw_meta, $start, 600 );
+            $widget_json_snippet = preg_replace( '/\s+/', ' ', $snippet );
+        }
+
+        echo "\n<!-- PF DN-tabs debug v4: id=" . $id
             . ' | rules=' . count( $rules )
-            . ' | total_controls=' . count( $all_controls )
             . ' | dn_controls_registered=' . count( $dn_controls )
-            . ' | dn_control_names=' . ( $dn_controls ? implode( ',', $dn_controls ) : '(none)' )
-            . ' | dn_settings_keys=' . count( $dn_settings )
-            . ' | dn_settings=' . ( $dn_settings ? implode( ' | ', array_map( function( $k, $v ) { return "$k=" . ( $v !== '' ? $v : '(empty)' ); }, array_keys( $dn_settings ), $dn_settings ) ) : '(none)' )
-            . ' | dn_globals=' . ( $dn_globals ? wp_json_encode( $dn_globals ) : '(none)' )
+            . ' | raw_total_keys=' . $raw_total
+            . ' | other_saved=' . ( $other_saved ? implode( ', ', $other_saved ) : '(none)' )
             . ' | dn_raw_keys=' . count( $dn_raw )
-            . ' | dn_raw=' . ( $dn_raw ? implode( ' | ', array_map( function( $k, $v ) { return "$k=" . ( $v !== '' ? $v : '(empty)' ); }, array_keys( $dn_raw ), $dn_raw ) ) : '(none)' )
+            . ' | dn_globals=' . ( $dn_globals ? wp_json_encode( $dn_globals ) : '(none)' )
+            . ' | post_id=' . $post_id
+            . ' | meta_has_dn=' . $meta_has_dn
+            . ' | meta_has_widget_id=' . $meta_has_id
+            . ' | widget_json=' . esc_html( $widget_json_snippet )
             . " -->\n";
 
         if ( ! empty( $rules ) ) {
