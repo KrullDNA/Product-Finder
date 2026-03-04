@@ -51,6 +51,7 @@ class PF_Elementor_Widget extends Widget_Base {
         $this->section_style_email_screen();
         $this->section_style_loading_screen();
         $this->section_style_results();
+        $this->section_style_dn_tabs();
         $this->section_style_result_cards();
     }
 
@@ -1236,9 +1237,11 @@ class PF_Elementor_Widget extends Widget_Base {
         ) );
 
         $this->end_controls_section();
+    }
 
-        /* ── Style: Day / Night Tabs ── */
+    /* ─── Style: Day / Night Tabs ─── */
 
+    private function section_style_dn_tabs() {
         $this->start_controls_section( 'section_style_dn_tabs', array(
             'label' => __( 'Day / Night Tabs', 'product-finder' ),
             'tab'   => Controls_Manager::TAB_STYLE,
@@ -1747,21 +1750,9 @@ class PF_Elementor_Widget extends Widget_Base {
                 . ( $tm['left'] ?? 0 ) . $u . '}';
         }
 
-        // Always output the style block (even if empty) plus a diagnostic
-        // HTML comment so we can inspect what Elementor is returning.
-        $dn_keys = array(
-            'dn_tab_color', 'dn_tab_bg', 'dn_tab_hover_color', 'dn_tab_hover_bg',
-            'dn_tab_active_color', 'dn_tab_active_bg', 'dn_line_color', 'dn_active_line_color',
-            'dn_tabs_align', 'dn_tab_padding', 'dn_tab_gap', 'dn_tab_border_radius',
-            'dn_line_width', 'dn_tabs_margin',
-        );
-        $diag = array();
-        foreach ( $dn_keys as $k ) {
-            $v = $settings[ $k ] ?? '(unset)';
-            $diag[] = $k . '=' . ( is_array( $v ) ? wp_json_encode( $v ) : $v );
+        if ( ! empty( $rules ) ) {
+            echo '<style>' . implode( '', $rules ) . '</style>';
         }
-        echo "\n<!-- PF DN-tabs debug: id=$id | " . implode( ' | ', $diag ) . " -->\n";
-        echo '<style>' . implode( '', $rules ) . '</style>';
     }
 
     private function get_finder_list() {
