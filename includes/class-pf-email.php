@@ -79,6 +79,25 @@ class PF_Email {
             }
         }
 
+        // Day/Night mode data.
+        $day_night      = ! empty( $_POST['day_night'] );
+        $day_products   = array();
+        $night_products = array();
+        if ( $day_night ) {
+            if ( ! empty( $_POST['day_products'] ) ) {
+                $raw = json_decode( stripslashes( $_POST['day_products'] ), true );
+                if ( is_array( $raw ) ) {
+                    $day_products = $raw;
+                }
+            }
+            if ( ! empty( $_POST['night_products'] ) ) {
+                $raw = json_decode( stripslashes( $_POST['night_products'] ), true );
+                if ( is_array( $raw ) ) {
+                    $night_products = $raw;
+                }
+            }
+        }
+
         // Get email style settings.
         $email_styles = get_post_meta( $finder_id, '_pf_email_styles', true );
         $email_styles = wp_parse_args( (array) $email_styles, array(
@@ -91,7 +110,7 @@ class PF_Email {
         $finder_title = get_the_title( $finder_id );
         $subject      = sprintf( __( 'Your %s Results', 'product-finder' ), $finder_title );
 
-        $body = $this->build_email_body( $finder_id, $finder_title, $product_ids, $products_data, $results_url, $email_styles );
+        $body = $this->build_email_body( $finder_id, $finder_title, $product_ids, $products_data, $results_url, $email_styles, $day_night, $day_products, $night_products );
 
         $headers = array(
             'Content-Type: text/html; charset=UTF-8',
@@ -129,7 +148,7 @@ class PF_Email {
     /**
      * Build a single product card row for the email.
      */
-    private function build_product_card( $product, $name, $category_label ) {
+    private function build_product_card( $product, $name, $category_label, $results_url = '' ) {
         $image_url = wp_get_attachment_image_url( $product->get_image_id(), 'medium' );
         $permalink = $product->get_permalink();
         $price     = $product->get_price_html();
@@ -181,8 +200,8 @@ class PF_Email {
 
         // Category label (rotated) - left column.
         if ( $category_label ) {
-            $html .= '<td width="40" style="vertical-align:middle;text-align:center;padding:16px 0 16px 8px;">';
-            $html .= '<div style="writing-mode:vertical-rl;transform:rotate(180deg);-webkit-transform:rotate(180deg);-ms-writing-mode:tb-rl;font-size:13px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#000;white-space:nowrap;line-height:1;display:inline-block;">';
+            $html .= '<td width="40" style="vertical-align:top;text-align:center;padding:16px 0 16px 8px;">';
+            $html .= '<div style="writing-mode:vertical-rl;transform:rotate(180deg);-webkit-transform:rotate(180deg);-ms-writing-mode:tb-rl;font-size:20px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#000;white-space:nowrap;line-height:1;display:inline-block;">';
             $html .= esc_html( $category_label );
             $html .= '</div>';
             $html .= '</td>';
@@ -213,14 +232,12 @@ class PF_Email {
             $html .= '</tr></table>';
         }
 
-        // Add to Cart button (links to product).
+        // Shop Now button (links to results page or product).
+        $button_url = $results_url ? $results_url : $permalink;
         $html .= '<table cellpadding="0" cellspacing="0" border="0"><tr>';
-        $html .= '<td style="vertical-align:middle;padding-right:8px;">';
-        $html .= '<div style="border:1px solid #ccc;padding:6px 16px;font-size:14px;color:#666;text-align:center;min-width:30px;">1</div>';
-        $html .= '</td>';
         $html .= '<td style="vertical-align:middle;">';
-        $html .= '<a href="' . esc_url( $permalink ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 20px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">';
-        $html .= wp_strip_all_tags( $price ) . ' &nbsp;|&nbsp; ' . esc_html__( 'ADD TO CART +', 'product-finder' );
+        $html .= '<a href="' . esc_url( $button_url ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">';
+        $html .= esc_html__( 'SHOP NOW', 'product-finder' );
         $html .= '</a>';
         $html .= '</td>';
         $html .= '</tr></table>';
@@ -232,7 +249,7 @@ class PF_Email {
         return $html;
     }
 
-    private function build_email_body( $finder_id, $finder_title, $product_ids, $products_data = array(), $results_url = '', $email_styles = array() ) {
+    private function build_email_body( $finder_id, $finder_title, $product_ids, $products_data = array(), $results_url = '', $email_styles = array(), $day_night = false, $day_products = array(), $night_products = array() ) {
         $accent   = ! empty( $email_styles['accent_color'] ) ? $email_styles['accent_color'] : '#000000';
         $logo_url = '';
         if ( ! empty( $email_styles['logo_id'] ) ) {
@@ -241,7 +258,9 @@ class PF_Email {
         $heading     = ! empty( $email_styles['heading'] ) ? $email_styles['heading'] : $finder_title . ' — Your Results';
         $sub_heading = ! empty( $email_styles['sub_heading'] ) ? $email_styles['sub_heading'] : __( 'Based on your answers, here are your recommended products:', 'product-finder' );
 
-        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:0;background:#ffffff;font-family:Arial,Helvetica,sans-serif;">';
+        $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
+        $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
+        $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Arial,Helvetica,sans-serif;">';
 
         // Top accent strip.
         $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>';
@@ -271,49 +290,74 @@ class PF_Email {
         // Shop the Look button.
         if ( $results_url ) {
             $html .= '<tr><td style="text-align:center;padding:0 0 30px;">';
-            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#fff;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
+            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
             $html .= esc_html__( 'SHOP THE LOOK', 'product-finder' );
             $html .= '</a>';
             $html .= '</td></tr>';
         }
 
-        // Divider.
-        $html .= '<tr><td style="border-bottom:1px solid #e0e0e0;padding:0;">&nbsp;</td></tr>';
+        // Helper to render a group of product cards.
+        $render_group = function ( $group_data, $fallback_ids = array() ) use ( $results_url ) {
+            $out = '';
+            if ( ! empty( $group_data ) ) {
+                foreach ( $group_data as $p ) {
+                    $pid          = absint( $p['id'] ?? 0 );
+                    $variation_id = absint( $p['variation_id'] ?? 0 );
+
+                    $display_id = $variation_id ?: $pid;
+                    $product    = wc_get_product( $display_id );
+                    if ( ! $product ) {
+                        $product = wc_get_product( $pid );
+                    }
+                    if ( ! $product ) {
+                        continue;
+                    }
+
+                    $name     = ! empty( $p['name'] ) ? $p['name'] : $product->get_name();
+                    $category = $p['result_category'] ?? '';
+                    $cat_label = $this->get_category_label( $category );
+
+                    $out .= $this->build_product_card( $product, $name, $cat_label, $results_url );
+                }
+            } else {
+                foreach ( $fallback_ids as $pid ) {
+                    $product = wc_get_product( $pid );
+                    if ( ! $product ) {
+                        continue;
+                    }
+                    $out .= $this->build_product_card( $product, $product->get_name(), '', $results_url );
+                }
+            }
+            return $out;
+        };
+
+        // Helper to render a Day/Night lozenge header.
+        $render_lozenge = function ( $label ) use ( $accent ) {
+            $out = '<tr><td style="text-align:center;padding:24px 0 8px;">';
+            $out .= '<span style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;padding:8px 28px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border-radius:20px;">';
+            $out .= esc_html( $label );
+            $out .= '</span>';
+            $out .= '</td></tr>';
+            return $out;
+        };
 
         // Product cards.
         $html .= '<tr><td>';
         $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0">';
 
-        if ( ! empty( $products_data ) ) {
-            foreach ( $products_data as $p ) {
-                $pid          = absint( $p['id'] ?? 0 );
-                $variation_id = absint( $p['variation_id'] ?? 0 );
-
-                $display_id = $variation_id ?: $pid;
-                $product    = wc_get_product( $display_id );
-                if ( ! $product ) {
-                    $product = wc_get_product( $pid );
-                }
-                if ( ! $product ) {
-                    continue;
-                }
-
-                $name     = ! empty( $p['name'] ) ? $p['name'] : $product->get_name();
-                $category = $p['result_category'] ?? '';
-                $cat_label = $this->get_category_label( $category );
-
-                $html .= $this->build_product_card( $product, $name, $cat_label );
+        if ( $day_night && ( ! empty( $day_products ) || ! empty( $night_products ) ) ) {
+            // Day group.
+            if ( ! empty( $day_products ) ) {
+                $html .= $render_lozenge( __( 'Day', 'product-finder' ) );
+                $html .= $render_group( $day_products );
+            }
+            // Night group.
+            if ( ! empty( $night_products ) ) {
+                $html .= $render_lozenge( __( 'Night', 'product-finder' ) );
+                $html .= $render_group( $night_products );
             }
         } else {
-            foreach ( $product_ids as $pid ) {
-                $product = wc_get_product( $pid );
-                if ( ! $product ) {
-                    continue;
-                }
-
-                $name = $product->get_name();
-                $html .= $this->build_product_card( $product, $name, '' );
-            }
+            $html .= $render_group( $products_data, $product_ids );
         }
 
         $html .= '</table>';
@@ -322,7 +366,7 @@ class PF_Email {
         // Bottom Shop Now button.
         if ( $results_url ) {
             $html .= '<tr><td style="text-align:center;padding:30px 0;">';
-            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#fff;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
+            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
             $html .= esc_html__( 'SHOP NOW', 'product-finder' );
             $html .= '</a>';
             $html .= '</td></tr>';
