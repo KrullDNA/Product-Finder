@@ -398,7 +398,7 @@ class PF_Email {
         // Helper to render a Day/Night lozenge header (black bg, lime text, left-aligned).
         $render_lozenge = function ( $label ) use ( $accent ) {
             $out = '<tr><td style="text-align:left;padding:24px 0 8px;">';
-            $out .= '<span style="display:inline-block;background:#000000;color:' . esc_attr( $accent ) . ';padding:8px 28px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border-radius:20px;">';
+            $out .= '<span style="display:inline-block;background:#000000;color:' . esc_attr( $accent ) . ';padding:8px 28px;font-size:13px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;border-radius:20px;">';
             $out .= esc_html( $label );
             $out .= '</span>';
             $out .= '</td></tr>';
