@@ -260,7 +260,7 @@ class PF_Email {
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
-        $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Arial,Helvetica,sans-serif;">';
+        $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
 
         // Top accent strip.
         $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>';
