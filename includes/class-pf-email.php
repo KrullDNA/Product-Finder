@@ -248,12 +248,12 @@ class PF_Email {
         }
 
         $html = '<tr><td style="padding:16px 0;">';
-        $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f8;border-radius:8px;">';
+        $html .= '<table class="pf-product-row" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f8f8;border-radius:8px;">';
         $html .= '<tr>';
 
         // Category label (rotated) - left column.
         if ( $category_label ) {
-            $html .= '<td width="40" style="vertical-align:top;text-align:center;padding:16px 0 16px 8px;">';
+            $html .= '<td class="pf-cat-cell" width="40" style="vertical-align:top;text-align:center;padding:16px 0 16px 8px;">';
             $html .= '<div style="writing-mode:vertical-rl;transform:rotate(180deg);-webkit-transform:rotate(180deg);-ms-writing-mode:tb-rl;font-size:20px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:#000;white-space:nowrap;line-height:1;display:inline-block;">';
             $html .= esc_html( $category_label );
             $html .= '</div>';
@@ -261,14 +261,14 @@ class PF_Email {
         }
 
         // Product image - centre.
-        $html .= '<td width="180" style="vertical-align:middle;padding:16px;">';
+        $html .= '<td class="pf-img-cell" width="180" style="vertical-align:middle;padding:16px;">';
         if ( $image_url ) {
             $html .= '<a href="' . esc_url( $permalink ) . '" style="text-decoration:none;"><img src="' . esc_url( $image_url ) . '" width="160" height="160" style="border-radius:6px;display:block;object-fit:cover;" alt="' . esc_attr( $display_name ) . '"></a>';
         }
         $html .= '</td>';
 
         // Product info - right.
-        $html .= '<td style="vertical-align:middle;padding:16px 16px 16px 0;">';
+        $html .= '<td class="pf-info-cell" style="vertical-align:middle;padding:16px 16px 16px 0;">';
         $html .= '<div style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
         if ( $name_subheading ) {
             $html .= '<div style="font-size:11px;font-weight:400;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
@@ -318,6 +318,17 @@ class PF_Email {
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
+        $html .= '<style type="text/css">';
+        $html .= '@media only screen and (max-width:620px){';
+        $html .= '.pf-product-row{display:block!important;width:100%!important;}';
+        $html .= '.pf-product-row>tbody>tr{display:flex!important;flex-wrap:wrap!important;}';
+        $html .= '.pf-cat-cell{display:inline-block!important;width:auto!important;vertical-align:middle!important;padding:16px 0 16px 16px!important;}';
+        $html .= '.pf-cat-cell div{writing-mode:horizontal-tb!important;transform:none!important;-webkit-transform:none!important;font-size:16px!important;}';
+        $html .= '.pf-img-cell{display:inline-block!important;width:auto!important;flex:1!important;padding:16px 16px 0 16px!important;}';
+        $html .= '.pf-img-cell img{width:100%!important;height:auto!important;max-width:100%!important;}';
+        $html .= '.pf-info-cell{display:block!important;width:100%!important;padding:20px 16px 16px 16px!important;}';
+        $html .= '}';
+        $html .= '</style>';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
 
         // Container.
