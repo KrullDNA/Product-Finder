@@ -106,10 +106,14 @@ class PF_Email {
             'accent_color'     => '#000000',
             'heading'          => '',
             'sub_heading'      => '',
+            'email_subject'    => '',
+            'footer_text'      => '',
         ) );
 
         $finder_title = get_the_title( $finder_id );
-        $subject      = sprintf( __( 'Your %s Results', 'product-finder' ), $finder_title );
+        $subject      = ! empty( $email_styles['email_subject'] )
+            ? $email_styles['email_subject']
+            : sprintf( __( 'Your %s Results', 'product-finder' ), $finder_title );
 
         $body = $this->build_email_body( $finder_id, $finder_title, $product_ids, $products_data, $results_url, $email_styles, $day_night, $day_products, $night_products );
 
@@ -154,43 +158,91 @@ class PF_Email {
         $permalink = $product->get_permalink();
         $price     = $product->get_price_html();
 
-        // Get product type / subtitle if available.
-        $short_desc = $product->get_short_description();
-        $type_text  = '';
-        if ( $short_desc ) {
-            // Use the first line of short description as subtitle.
-            $type_text = wp_strip_all_tags( strtok( $short_desc, "\n" ) );
-            if ( strlen( $type_text ) > 60 ) {
-                $type_text = substr( $type_text, 0, 57 ) . '...';
+        // Strip variation suffix from the display name (e.g. "Lush — Lush 3" becomes "Lush").
+        $display_name    = $name;
+        $meta_product_id = $product->get_id();
+        $parent          = null;
+        if ( $product->is_type( 'variation' ) ) {
+            $parent = wc_get_product( $product->get_parent_id() );
+            if ( $parent ) {
+                $display_name    = $parent->get_name();
+                $meta_product_id = $parent->get_id();
             }
         }
 
-        // Get variation swatch info.
-        $swatch_html = '';
+        // Get name_subheading custom meta.
+        $name_subheading = get_post_meta( $meta_product_id, 'name_subheading', true );
+
+        // Get variation swatch info — use label (not slug) + colour circle or image.
+        $swatch_html  = '';
         $swatch_label = '';
         if ( $product->is_type( 'variation' ) ) {
             $attrs = $product->get_attributes();
-            $swatch_label = implode( ', ', array_values( $attrs ) );
 
-            // Try to get the swatch colour.
-            $parent = wc_get_product( $product->get_parent_id() );
             if ( $parent ) {
-                $color_attr = '';
                 foreach ( $attrs as $attr_name => $attr_val ) {
-                    $term = get_term_by( 'slug', $attr_val, $attr_name );
-                    if ( $term ) {
-                        $color = get_term_meta( $term->term_id, 'product_attribute_color', true );
-                        if ( ! $color ) {
-                            $color = get_term_meta( $term->term_id, '_fif_vse_color', true );
-                        }
-                        if ( $color ) {
-                            $color_attr = $color;
-                            break;
+                    if ( empty( $attr_val ) ) {
+                        continue;
+                    }
+
+                    // Resolve label from term (not slug).
+                    if ( taxonomy_exists( $attr_name ) ) {
+                        $term = get_term_by( 'slug', $attr_val, $attr_name );
+                        if ( $term && ! is_wp_error( $term ) ) {
+                            $swatch_label = $term->name;
+
+                            // Try to get swatch image first, then hex colour.
+                            $swatch_image_url = '';
+                            $image_keys = array(
+                                'product_attribute_image',
+                                'fif_swatch_image_id',
+                                'image',
+                                '_image',
+                                'swatch_image',
+                                'attribute_swatch_image',
+                            );
+                            foreach ( $image_keys as $img_key ) {
+                                $img_val = get_term_meta( $term->term_id, $img_key, true );
+                                if ( ! $img_val ) {
+                                    continue;
+                                }
+                                if ( is_numeric( $img_val ) ) {
+                                    $url = wp_get_attachment_image_url( (int) $img_val, 'thumbnail' );
+                                    if ( $url ) {
+                                        $swatch_image_url = $url;
+                                        break;
+                                    }
+                                } elseif ( filter_var( $img_val, FILTER_VALIDATE_URL ) ) {
+                                    $swatch_image_url = $img_val;
+                                    break;
+                                }
+                            }
+
+                            if ( $swatch_image_url ) {
+                                $swatch_html = '<td style="width:28px;vertical-align:middle;padding-right:8px;"><img src="' . esc_url( $swatch_image_url ) . '" width="24" height="24" style="width:24px;height:24px;border-radius:50%;object-fit:cover;border:1px solid rgba(0,0,0,0.1);display:block;" alt="' . esc_attr( $swatch_label ) . '"></td>';
+                            } else {
+                                // Fallback to hex colour.
+                                $color = '';
+                                $color_keys = array( 'product_attribute_color', '_fif_vse_color', 'fif_swatch_color', 'color', '_color', 'attribute_swatch_color' );
+                                foreach ( $color_keys as $clr_key ) {
+                                    $color = get_term_meta( $term->term_id, $clr_key, true );
+                                    if ( $color ) {
+                                        break;
+                                    }
+                                }
+                                if ( $color ) {
+                                    $swatch_html = '<td style="width:28px;vertical-align:middle;padding-right:8px;"><div style="width:24px;height:24px;border-radius:50%;background:' . esc_attr( $color ) . ';border:1px solid rgba(0,0,0,0.1);"></div></td>';
+                                }
+                            }
+
+                            break; // Use the first attribute.
                         }
                     }
-                }
-                if ( $color_attr ) {
-                    $swatch_html = '<td style="width:28px;vertical-align:middle;padding-right:8px;"><div style="width:24px;height:24px;border-radius:50%;background:' . esc_attr( $color_attr ) . ';border:1px solid rgba(0,0,0,0.1);"></div></td>';
+
+                    // Fallback if not a taxonomy — use slug as label.
+                    if ( ! $swatch_label ) {
+                        $swatch_label = $attr_val;
+                    }
                 }
             }
         }
@@ -202,7 +254,7 @@ class PF_Email {
         // Category label (rotated) - left column.
         if ( $category_label ) {
             $html .= '<td width="40" style="vertical-align:top;text-align:center;padding:16px 0 16px 8px;">';
-            $html .= '<div style="writing-mode:vertical-rl;transform:rotate(180deg);-webkit-transform:rotate(180deg);-ms-writing-mode:tb-rl;font-size:20px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#000;white-space:nowrap;line-height:1;display:inline-block;">';
+            $html .= '<div style="writing-mode:vertical-rl;transform:rotate(180deg);-webkit-transform:rotate(180deg);-ms-writing-mode:tb-rl;font-size:20px;font-weight:400;letter-spacing:0.08em;text-transform:uppercase;color:#000;white-space:nowrap;line-height:1;display:inline-block;">';
             $html .= esc_html( $category_label );
             $html .= '</div>';
             $html .= '</td>';
@@ -211,15 +263,15 @@ class PF_Email {
         // Product image - centre.
         $html .= '<td width="180" style="vertical-align:middle;padding:16px;">';
         if ( $image_url ) {
-            $html .= '<a href="' . esc_url( $permalink ) . '" style="text-decoration:none;"><img src="' . esc_url( $image_url ) . '" width="160" height="160" style="border-radius:6px;display:block;object-fit:cover;" alt="' . esc_attr( $name ) . '"></a>';
+            $html .= '<a href="' . esc_url( $permalink ) . '" style="text-decoration:none;"><img src="' . esc_url( $image_url ) . '" width="160" height="160" style="border-radius:6px;display:block;object-fit:cover;" alt="' . esc_attr( $display_name ) . '"></a>';
         }
         $html .= '</td>';
 
         // Product info - right.
         $html .= '<td style="vertical-align:middle;padding:16px 16px 16px 0;">';
-        $html .= '<div style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;font-style:italic;">' . esc_html( $name ) . '</div>';
-        if ( $type_text ) {
-            $html .= '<div style="font-size:13px;font-weight:700;color:#000;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">' . esc_html( $type_text ) . '</div>';
+        $html .= '<div style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
+        if ( $name_subheading ) {
+            $html .= '<div style="font-size:11px;font-weight:400;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
         }
         $html .= '<div style="font-size:16px;font-weight:700;color:#000;margin-bottom:12px;">' . wp_strip_all_tags( $price ) . '</div>';
 
@@ -237,7 +289,7 @@ class PF_Email {
         $button_url = $results_url ? $results_url : $permalink;
         $html .= '<table cellpadding="0" cellspacing="0" border="0"><tr>';
         $html .= '<td style="vertical-align:middle;">';
-        $html .= '<a href="' . esc_url( $button_url ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">';
+        $html .= '<a href="' . esc_url( $button_url ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:300;letter-spacing:0.05em;text-transform:uppercase;">';
         $html .= esc_html__( 'SHOP NOW', 'product-finder' );
         $html .= '</a>';
         $html .= '</td>';
@@ -258,13 +310,14 @@ class PF_Email {
         }
         $heading     = ! empty( $email_styles['heading'] ) ? $email_styles['heading'] : $finder_title . ' — Your Results';
         $sub_heading = ! empty( $email_styles['sub_heading'] ) ? $email_styles['sub_heading'] : __( 'Based on your answers, here are your recommended products:', 'product-finder' );
+        $footer_text = ! empty( $email_styles['footer_text'] ) ? $email_styles['footer_text'] : __( 'This email was generated by Product Finder.', 'product-finder' );
         $header_image_url = '';
         if ( ! empty( $email_styles['header_image_id'] ) ) {
             $header_image_url = wp_get_attachment_image_url( absint( $email_styles['header_image_id'] ), 'full' );
         }
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
-        $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
+        $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
 
         // Top accent strip.
@@ -301,7 +354,7 @@ class PF_Email {
         // Shop the Look button.
         if ( $results_url ) {
             $html .= '<tr><td style="text-align:center;padding:0 0 30px;">';
-            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
+            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:300;letter-spacing:0.08em;text-transform:uppercase;">';
             $html .= esc_html__( 'SHOP THE LOOK', 'product-finder' );
             $html .= '</a>';
             $html .= '</td></tr>';
@@ -342,10 +395,10 @@ class PF_Email {
             return $out;
         };
 
-        // Helper to render a Day/Night lozenge header.
+        // Helper to render a Day/Night lozenge header (black bg, lime text, left-aligned).
         $render_lozenge = function ( $label ) use ( $accent ) {
-            $out = '<tr><td style="text-align:center;padding:24px 0 8px;">';
-            $out .= '<span style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;padding:8px 28px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border-radius:20px;">';
+            $out = '<tr><td style="text-align:left;padding:24px 0 8px;">';
+            $out .= '<span style="display:inline-block;background:#000000;color:' . esc_attr( $accent ) . ';padding:8px 28px;font-size:13px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border-radius:20px;">';
             $out .= esc_html( $label );
             $out .= '</span>';
             $out .= '</td></tr>';
@@ -374,18 +427,18 @@ class PF_Email {
         $html .= '</table>';
         $html .= '</td></tr>';
 
-        // Bottom Shop Now button.
+        // Bottom Shop the Look button.
         if ( $results_url ) {
             $html .= '<tr><td style="text-align:center;padding:30px 0;">';
-            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;">';
-            $html .= esc_html__( 'SHOP NOW', 'product-finder' );
+            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#000000;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:300;letter-spacing:0.08em;text-transform:uppercase;">';
+            $html .= esc_html__( 'SHOP THE LOOK', 'product-finder' );
             $html .= '</a>';
             $html .= '</td></tr>';
         }
 
         // Footer.
         $html .= '<tr><td style="text-align:center;padding:20px 0 30px;border-top:1px solid #e0e0e0;">';
-        $html .= '<p style="margin:0;font-size:12px;color:#999;">' . __( 'This email was generated by Product Finder.', 'product-finder' ) . '</p>';
+        $html .= '<p style="margin:0;font-size:12px;color:#999;">' . esc_html( $footer_text ) . '</p>';
         $html .= '</td></tr>';
 
         // Close container.
