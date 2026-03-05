@@ -290,12 +290,11 @@ class PF_Email {
             $html .= '<img src="' . esc_url( $header_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="max-width:100%;height:auto;display:block;margin:0 auto;" />';
             $html .= '</td></tr>';
         } else {
-            $html .= '<tr><td style="text-align:center;padding:16px 0 6px;">';
-            $html .= '<h1 style="margin:0;font-size:24px;font-weight:700;color:#000;">' . esc_html( $heading ) . '</h1>';
-            $html .= '</td></tr>';
-
-            $html .= '<tr><td style="text-align:center;padding:0 0 24px;">';
+            $html .= '<tr><td style="padding:16px 0 24px;">';
+            $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background:#f5f5f5;border-radius:8px;text-align:center;padding:28px 24px;">';
+            $html .= '<h1 style="margin:0 0 8px;font-size:24px;font-weight:700;color:#000;">' . esc_html( $heading ) . '</h1>';
             $html .= '<div style="margin:0;font-size:14px;color:#666;line-height:1.5;">' . wp_kses_post( $sub_heading ) . '</div>';
+            $html .= '</td></tr></table>';
             $html .= '</td></tr>';
         }
 
