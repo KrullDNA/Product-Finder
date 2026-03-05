@@ -320,13 +320,11 @@ class PF_Email {
         $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
 
-        // Top accent strip.
-        $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>';
-        $html .= '<td style="background:' . esc_attr( $accent ) . ';height:6px;font-size:0;line-height:0;">&nbsp;</td>';
-        $html .= '</tr></table>';
-
         // Container.
         $html .= '<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 16px;"><table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">';
+
+        // Top accent strip.
+        $html .= '<tr><td style="background:' . esc_attr( $accent ) . ';height:20px;font-size:0;line-height:0;">&nbsp;</td></tr>';
 
         // Logo.
         if ( $logo_url ) {
