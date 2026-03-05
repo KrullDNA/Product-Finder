@@ -405,10 +405,18 @@ class PF_Admin {
                 <fieldset class="pf-dn-fieldset">
                     <legend><?php esc_html_e( 'Sub Heading', 'product-finder' ); ?></legend>
                     <p>
-                        <label><?php esc_html_e( 'Text Under Heading', 'product-finder' ); ?></label><br>
-                        <input type="text" name="pf_email[sub_heading]" value="<?php echo esc_attr( $es['sub_heading'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Based on your answers, here are your recommended products:', 'product-finder' ); ?>">
+                        <label><?php esc_html_e( 'Text Under Heading', 'product-finder' ); ?></label>
                         <span class="description"><?php esc_html_e( 'Smaller text shown below the main heading.', 'product-finder' ); ?></span>
                     </p>
+                    <?php
+                    wp_editor( $es['sub_heading'], 'pf_email_sub_heading', array(
+                        'textarea_name' => 'pf_email[sub_heading]',
+                        'textarea_rows' => 5,
+                        'media_buttons' => false,
+                        'teeny'         => true,
+                        'quicktags'     => true,
+                    ) );
+                    ?>
                 </fieldset>
             </div>
         </div>
@@ -887,7 +895,7 @@ class PF_Admin {
             'logo_id'      => absint( $raw_email['logo_id'] ?? 0 ),
             'accent_color' => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
             'heading'      => sanitize_text_field( $raw_email['heading'] ?? '' ),
-            'sub_heading'  => sanitize_text_field( $raw_email['sub_heading'] ?? '' ),
+            'sub_heading'  => wp_kses_post( $raw_email['sub_heading'] ?? '' ),
         );
         update_post_meta( $post_id, '_pf_email_styles', $email_styles );
     }

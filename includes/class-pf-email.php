@@ -265,7 +265,7 @@ class PF_Email {
 
         // Sub heading.
         $html .= '<tr><td style="text-align:center;padding:0 0 24px;">';
-        $html .= '<p style="margin:0;font-size:14px;color:#666;line-height:1.5;">' . esc_html( $sub_heading ) . '</p>';
+        $html .= '<div style="margin:0;font-size:14px;color:#666;line-height:1.5;">' . wp_kses_post( $sub_heading ) . '</div>';
         $html .= '</td></tr>';
 
         // Shop the Look button.
