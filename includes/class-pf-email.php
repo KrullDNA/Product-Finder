@@ -119,6 +119,7 @@ class PF_Email {
 
         $headers = array(
             'Content-Type: text/html; charset=UTF-8',
+            'From: Apotheca® <no_reply@apothecacosmetics.com>',
         );
 
         $sent = wp_mail( $email, $subject, $body, $headers );
@@ -172,6 +173,14 @@ class PF_Email {
 
         // Get name_subheading custom meta.
         $name_subheading = get_post_meta( $meta_product_id, 'name_subheading', true );
+
+        // Get short description (from parent for variations).
+        $short_description = '';
+        if ( $product->is_type( 'variation' ) && $parent ) {
+            $short_description = $parent->get_short_description();
+        } else {
+            $short_description = $product->get_short_description();
+        }
 
         // Get variation swatch info — use label (not slug) + colour circle or image.
         $swatch_html  = '';
@@ -269,18 +278,21 @@ class PF_Email {
 
         // Product info - right.
         $html .= '<td class="pf-info-cell" style="vertical-align:middle;padding:16px 16px 16px 0;">';
-        $html .= '<div style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
+        $html .= '<div class="pf-title" style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
         if ( $name_subheading ) {
-            $html .= '<div style="font-size:11px;font-weight:400;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
+            $html .= '<div class="pf-subheading" style="font-size:11px;font-weight:400;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
         }
-        $html .= '<div style="font-size:16px;font-weight:700;color:#000;margin-bottom:12px;">' . wp_strip_all_tags( $price ) . '</div>';
+        if ( $short_description ) {
+            $html .= '<div class="pf-short-desc" style="font-size:13px;font-weight:400;color:#555;margin:15px 0;line-height:1.4;">' . wp_kses_post( $short_description ) . '</div>';
+        }
+        $html .= '<div class="pf-price" style="font-size:16px;font-weight:700;color:#000;margin-bottom:12px;">' . wp_strip_all_tags( $price ) . '</div>';
 
         // Swatch row.
         if ( $swatch_html || $swatch_label ) {
             $html .= '<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;"><tr>';
             $html .= $swatch_html;
             if ( $swatch_label ) {
-                $html .= '<td style="vertical-align:middle;font-size:14px;color:#333;">' . esc_html( $swatch_label ) . '</td>';
+                $html .= '<td class="pf-swatch-label" style="vertical-align:middle;font-size:14px;color:#333;">' . esc_html( $swatch_label ) . '</td>';
             }
             $html .= '</tr></table>';
         }
@@ -327,6 +339,11 @@ class PF_Email {
         $html .= '.pf-img-cell{display:inline-block!important;width:auto!important;flex:1!important;padding:16px 16px 0 16px!important;}';
         $html .= '.pf-img-cell img{width:100%!important;height:auto!important;max-width:100%!important;}';
         $html .= '.pf-info-cell{display:block!important;width:100%!important;padding:20px 16px 16px 16px!important;}';
+        $html .= '.pf-title{font-size:22.5px!important;}';
+        $html .= '.pf-subheading{font-size:13.75px!important;}';
+        $html .= '.pf-short-desc{font-size:16.25px!important;}';
+        $html .= '.pf-price{font-size:20px!important;}';
+        $html .= '.pf-swatch-label{font-size:17.5px!important;}';
         $html .= '}';
         $html .= '</style>';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
