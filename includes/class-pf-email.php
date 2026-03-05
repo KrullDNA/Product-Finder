@@ -301,7 +301,7 @@ class PF_Email {
         $button_url = $results_url ? $results_url : $permalink;
         $html .= '<table cellpadding="0" cellspacing="0" border="0"><tr>';
         $html .= '<td style="vertical-align:middle;">';
-        $html .= '<a href="' . esc_url( $button_url ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:300;letter-spacing:0.05em;text-transform:uppercase;">';
+        $html .= '<a class="pf-shop-btn" href="' . esc_url( $button_url ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 24px;font-size:13px;font-weight:300;letter-spacing:0.05em;text-transform:uppercase;">';
         $html .= esc_html__( 'SHOP NOW', 'product-finder' );
         $html .= '</a>';
         $html .= '</td>';
@@ -334,8 +334,7 @@ class PF_Email {
         $html .= '@media only screen and (max-width:620px){';
         $html .= '.pf-product-row{display:block!important;width:100%!important;}';
         $html .= '.pf-product-row>tbody>tr{display:flex!important;flex-wrap:wrap!important;}';
-        $html .= '.pf-cat-cell{display:inline-block!important;width:auto!important;vertical-align:middle!important;padding:16px 0 16px 16px!important;}';
-        $html .= '.pf-cat-cell div{writing-mode:horizontal-tb!important;transform:none!important;-webkit-transform:none!important;font-size:16px!important;}';
+        $html .= '.pf-cat-cell{display:inline-block!important;width:auto!important;vertical-align:top!important;padding:16px 0 16px 16px!important;}';
         $html .= '.pf-img-cell{display:inline-block!important;width:auto!important;flex:1!important;padding:16px 16px 0 16px!important;}';
         $html .= '.pf-img-cell img{width:100%!important;height:auto!important;max-width:100%!important;}';
         $html .= '.pf-info-cell{display:block!important;width:100%!important;padding:20px 16px 16px 16px!important;}';
@@ -344,6 +343,7 @@ class PF_Email {
         $html .= '.pf-short-desc{font-size:16.25px!important;}';
         $html .= '.pf-price{font-size:20px!important;}';
         $html .= '.pf-swatch-label{font-size:17.5px!important;}';
+        $html .= '.pf-shop-btn{font-size:16.25px!important;}';
         $html .= '}';
         $html .= '</style>';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
