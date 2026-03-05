@@ -101,10 +101,11 @@ class PF_Email {
         // Get email style settings.
         $email_styles = get_post_meta( $finder_id, '_pf_email_styles', true );
         $email_styles = wp_parse_args( (array) $email_styles, array(
-            'logo_id'      => 0,
-            'accent_color' => '#000000',
-            'heading'      => '',
-            'sub_heading'  => '',
+            'logo_id'          => 0,
+            'header_image_id'  => 0,
+            'accent_color'     => '#000000',
+            'heading'          => '',
+            'sub_heading'      => '',
         ) );
 
         $finder_title = get_the_title( $finder_id );
@@ -257,6 +258,10 @@ class PF_Email {
         }
         $heading     = ! empty( $email_styles['heading'] ) ? $email_styles['heading'] : $finder_title . ' — Your Results';
         $sub_heading = ! empty( $email_styles['sub_heading'] ) ? $email_styles['sub_heading'] : __( 'Based on your answers, here are your recommended products:', 'product-finder' );
+        $header_image_url = '';
+        if ( ! empty( $email_styles['header_image_id'] ) ) {
+            $header_image_url = wp_get_attachment_image_url( absint( $email_styles['header_image_id'] ), 'full' );
+        }
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
@@ -277,15 +282,22 @@ class PF_Email {
             $html .= '</td></tr>';
         }
 
-        // Heading.
-        $html .= '<tr><td style="text-align:center;padding:16px 0 6px;">';
-        $html .= '<h1 style="margin:0;font-size:24px;font-weight:700;color:#000;">' . esc_html( $heading ) . '</h1>';
-        $html .= '</td></tr>';
+        // Heading + sub-heading (or header image).
+        if ( $header_image_url ) {
+            // Build alt text from heading + plain-text sub-heading.
+            $alt_text = $heading . ' — ' . wp_strip_all_tags( $sub_heading );
+            $html .= '<tr><td style="text-align:center;padding:16px 0 24px;">';
+            $html .= '<img src="' . esc_url( $header_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="max-width:100%;height:auto;display:block;margin:0 auto;" />';
+            $html .= '</td></tr>';
+        } else {
+            $html .= '<tr><td style="text-align:center;padding:16px 0 6px;">';
+            $html .= '<h1 style="margin:0;font-size:24px;font-weight:700;color:#000;">' . esc_html( $heading ) . '</h1>';
+            $html .= '</td></tr>';
 
-        // Sub heading.
-        $html .= '<tr><td style="text-align:center;padding:0 0 24px;">';
-        $html .= '<div style="margin:0;font-size:14px;color:#666;line-height:1.5;">' . wp_kses_post( $sub_heading ) . '</div>';
-        $html .= '</td></tr>';
+            $html .= '<tr><td style="text-align:center;padding:0 0 24px;">';
+            $html .= '<div style="margin:0;font-size:14px;color:#666;line-height:1.5;">' . wp_kses_post( $sub_heading ) . '</div>';
+            $html .= '</td></tr>';
+        }
 
         // Shop the Look button.
         if ( $results_url ) {
