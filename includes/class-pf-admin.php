@@ -387,7 +387,7 @@ class PF_Admin {
                     <p>
                         <label><?php esc_html_e( 'Top Strip & Button Background', 'product-finder' ); ?></label><br>
                         <input type="text" name="pf_email[accent_color]" value="<?php echo esc_attr( $es['accent_color'] ); ?>" class="pf-color-field" data-default-color="#000000">
-                        <span class="description"><?php esc_html_e( 'Used for the top colour strip, "Shop the Look" button, and "Add to Cart" buttons.', 'product-finder' ); ?></span>
+                        <span class="description"><?php esc_html_e( 'Used for the top colour strip and "Shop the Look" button.', 'product-finder' ); ?></span>
                     </p>
                 </fieldset>
 

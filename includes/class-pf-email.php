@@ -129,7 +129,7 @@ class PF_Email {
     /**
      * Build a single product card row for the email.
      */
-    private function build_product_card( $product, $name, $category_label, $accent_color ) {
+    private function build_product_card( $product, $name, $category_label ) {
         $image_url = wp_get_attachment_image_url( $product->get_image_id(), 'medium' );
         $permalink = $product->get_permalink();
         $price     = $product->get_price_html();
@@ -219,7 +219,7 @@ class PF_Email {
         $html .= '<div style="border:1px solid #ccc;padding:6px 16px;font-size:14px;color:#666;text-align:center;min-width:30px;">1</div>';
         $html .= '</td>';
         $html .= '<td style="vertical-align:middle;">';
-        $html .= '<a href="' . esc_url( $permalink ) . '" style="display:inline-block;background:' . esc_attr( $accent_color ) . ';color:#fff;text-decoration:none;padding:10px 20px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">';
+        $html .= '<a href="' . esc_url( $permalink ) . '" style="display:inline-block;background:#000000;color:#fff;text-decoration:none;padding:10px 20px;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">';
         $html .= wp_strip_all_tags( $price ) . ' &nbsp;|&nbsp; ' . esc_html__( 'ADD TO CART +', 'product-finder' );
         $html .= '</a>';
         $html .= '</td>';
@@ -302,7 +302,7 @@ class PF_Email {
                 $category = $p['result_category'] ?? '';
                 $cat_label = $this->get_category_label( $category );
 
-                $html .= $this->build_product_card( $product, $name, $cat_label, $accent );
+                $html .= $this->build_product_card( $product, $name, $cat_label );
             }
         } else {
             foreach ( $product_ids as $pid ) {
@@ -312,7 +312,7 @@ class PF_Email {
                 }
 
                 $name = $product->get_name();
-                $html .= $this->build_product_card( $product, $name, '', $accent );
+                $html .= $this->build_product_card( $product, $name, '' );
             }
         }
 
