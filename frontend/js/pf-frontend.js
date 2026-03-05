@@ -527,6 +527,17 @@
                         postData.products_data = JSON.stringify(data.products);
                     }
 
+                    // Pass Day/Night grouping if present.
+                    if (data.day_night) {
+                        postData.day_night = 1;
+                        if (data.day_products && data.day_products.length) {
+                            postData.day_products = JSON.stringify(data.day_products);
+                        }
+                        if (data.night_products && data.night_products.length) {
+                            postData.night_products = JSON.stringify(data.night_products);
+                        }
+                    }
+
                     $.post(pfFrontend.ajax_url, postData, function (res) {
                         if (res.success) {
                             // Redirect to results page immediately.

@@ -356,12 +356,14 @@ class PF_Admin {
     public function render_email_styles_box( $post ) {
         $es = get_post_meta( $post->ID, '_pf_email_styles', true );
         $es = wp_parse_args( (array) $es, array(
-            'logo_id'      => 0,
-            'accent_color' => '#000000',
-            'heading'      => '',
-            'sub_heading'  => '',
+            'logo_id'          => 0,
+            'header_image_id'  => 0,
+            'accent_color'     => '#000000',
+            'heading'          => '',
+            'sub_heading'      => '',
         ) );
         $logo_url = $es['logo_id'] ? wp_get_attachment_image_url( $es['logo_id'], 'medium' ) : '';
+        $header_image_url = $es['header_image_id'] ? wp_get_attachment_image_url( $es['header_image_id'], 'medium' ) : '';
         ?>
         <div class="pf-email-styles-wrap">
             <p class="description"><?php esc_html_e( 'Customise the results email that gets sent to users. Leave fields blank to use defaults.', 'product-finder' ); ?></p>
@@ -381,13 +383,27 @@ class PF_Admin {
                     </p>
                 </fieldset>
 
+                <!-- Header Image (replaces heading + sub-heading text) -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Header Image', 'product-finder' ); ?></legend>
+                    <p>
+                        <input type="hidden" name="pf_email[header_image_id]" value="<?php echo esc_attr( $es['header_image_id'] ); ?>" class="pf-email-header-image-id">
+                        <div class="pf-email-header-image-preview" <?php echo $header_image_url ? '' : 'style="display:none;"'; ?>>
+                            <img src="<?php echo esc_url( $header_image_url ); ?>" alt="" style="max-width:400px;max-height:200px;height:auto;display:block;margin-bottom:6px;border:1px solid #dcdcde;border-radius:4px;">
+                            <button type="button" class="button pf-email-remove-header-image"><?php esc_html_e( 'Remove Image', 'product-finder' ); ?></button>
+                        </div>
+                        <button type="button" class="button pf-email-select-header-image"><?php esc_html_e( 'Select Header Image', 'product-finder' ); ?></button>
+                        <span class="description"><?php esc_html_e( 'Optional. When set, replaces the heading and sub-heading text with this image. Upload a transparent PNG for best results. The heading and sub-heading text will be used as alt text for accessibility.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
+
                 <!-- Accent Colour -->
                 <fieldset class="pf-dn-fieldset">
                     <legend><?php esc_html_e( 'Accent Colour', 'product-finder' ); ?></legend>
                     <p>
                         <label><?php esc_html_e( 'Top Strip & Button Background', 'product-finder' ); ?></label><br>
                         <input type="text" name="pf_email[accent_color]" value="<?php echo esc_attr( $es['accent_color'] ); ?>" class="pf-color-field" data-default-color="#000000">
-                        <span class="description"><?php esc_html_e( 'Used for the top colour strip, "Shop the Look" button, and "Add to Cart" buttons.', 'product-finder' ); ?></span>
+                        <span class="description"><?php esc_html_e( 'Used for the top colour strip and "Shop the Look" button.', 'product-finder' ); ?></span>
                     </p>
                 </fieldset>
 
@@ -405,10 +421,18 @@ class PF_Admin {
                 <fieldset class="pf-dn-fieldset">
                     <legend><?php esc_html_e( 'Sub Heading', 'product-finder' ); ?></legend>
                     <p>
-                        <label><?php esc_html_e( 'Text Under Heading', 'product-finder' ); ?></label><br>
-                        <input type="text" name="pf_email[sub_heading]" value="<?php echo esc_attr( $es['sub_heading'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Based on your answers, here are your recommended products:', 'product-finder' ); ?>">
+                        <label><?php esc_html_e( 'Text Under Heading', 'product-finder' ); ?></label>
                         <span class="description"><?php esc_html_e( 'Smaller text shown below the main heading.', 'product-finder' ); ?></span>
                     </p>
+                    <?php
+                    wp_editor( $es['sub_heading'], 'pf_email_sub_heading', array(
+                        'textarea_name' => 'pf_email[sub_heading]',
+                        'textarea_rows' => 5,
+                        'media_buttons' => false,
+                        'teeny'         => true,
+                        'quicktags'     => true,
+                    ) );
+                    ?>
                 </fieldset>
             </div>
         </div>
@@ -434,6 +458,25 @@ class PF_Admin {
                 $('.pf-email-logo-id').val('');
                 $('.pf-email-logo-preview').hide();
                 $('.pf-email-logo-preview img').attr('src', '');
+            });
+
+            // Header image upload.
+            $(document).on('click', '.pf-email-select-header-image', function(){
+                var frame = wp.media({ title: 'Select Header Image', button: { text: 'Use this image' }, multiple: false, library: { type: 'image' } });
+                frame.on('select', function(){
+                    var att = frame.state().get('selection').first().toJSON();
+                    var url = att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url;
+                    $('.pf-email-header-image-id').val(att.id);
+                    $('.pf-email-header-image-preview img').attr('src', url);
+                    $('.pf-email-header-image-preview').show();
+                });
+                frame.open();
+            });
+
+            $(document).on('click', '.pf-email-remove-header-image', function(){
+                $('.pf-email-header-image-id').val('');
+                $('.pf-email-header-image-preview').hide();
+                $('.pf-email-header-image-preview img').attr('src', '');
             });
         });
         </script>
@@ -884,10 +927,11 @@ class PF_Admin {
         // Save Email styles
         $raw_email    = $_POST['pf_email'] ?? array();
         $email_styles = array(
-            'logo_id'      => absint( $raw_email['logo_id'] ?? 0 ),
-            'accent_color' => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
-            'heading'      => sanitize_text_field( $raw_email['heading'] ?? '' ),
-            'sub_heading'  => sanitize_text_field( $raw_email['sub_heading'] ?? '' ),
+            'logo_id'          => absint( $raw_email['logo_id'] ?? 0 ),
+            'header_image_id'  => absint( $raw_email['header_image_id'] ?? 0 ),
+            'accent_color'     => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
+            'heading'          => sanitize_text_field( $raw_email['heading'] ?? '' ),
+            'sub_heading'      => wp_kses_post( $raw_email['sub_heading'] ?? '' ),
         );
         update_post_meta( $post_id, '_pf_email_styles', $email_styles );
     }
