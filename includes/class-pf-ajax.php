@@ -183,11 +183,31 @@ class PF_Ajax {
         $ob_baseline = ob_get_level();
         ob_start();
 
-        $finder_id       = absint( $_POST['finder_id'] ?? 0 );
-        $answers         = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
+        $finder_id        = absint( $_POST['finder_id'] ?? 0 );
+        $answers          = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
         $followup_answers = json_decode( stripslashes( $_POST['followup_answers'] ?? '{}' ), true );
         if ( ! is_array( $followup_answers ) ) {
             $followup_answers = array();
+        }
+
+        // If a results_token is provided, re-hydrate answers from the stored session.
+        $results_token = sanitize_text_field( $_POST['results_token'] ?? '' );
+        if ( $results_token ) {
+            $session = PF_Email::get_session_data( $results_token );
+            if ( $session && ! empty( $session['finder_id'] ) ) {
+                $finder_id        = absint( $session['finder_id'] );
+                $answers          = json_decode( stripslashes( $session['answers'] ?? '[]' ), true );
+                $followup_answers = json_decode( stripslashes( $session['followup_answers'] ?? '{}' ), true );
+                if ( ! is_array( $answers ) ) {
+                    $answers = array();
+                }
+                if ( ! is_array( $followup_answers ) ) {
+                    $followup_answers = array();
+                }
+            } else {
+                $this->ob_clean_to( $ob_baseline );
+                wp_send_json_error( array( 'message' => __( 'Results session expired or invalid.', 'product-finder' ) ) );
+            }
         }
 
         if ( ! $finder_id || ! is_array( $answers ) ) {
@@ -594,6 +614,7 @@ class PF_Ajax {
                     'reasons'           => $reasons,
                     'variation_id'      => 0,
                     'is_variable'       => false,
+                    'result_category'   => $info['result_category'] ?? '',
                 );
 
                 if ( $is_beauty && $variation_id ) {
