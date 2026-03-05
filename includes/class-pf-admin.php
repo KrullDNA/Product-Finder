@@ -108,6 +108,15 @@ class PF_Admin {
             'normal',
             'default'
         );
+
+        add_meta_box(
+            'pf_email_styles',
+            __( 'Email Styling', 'product-finder' ),
+            array( $this, 'render_email_styles_box' ),
+            'product_finder',
+            'normal',
+            'default'
+        );
     }
 
     /* ─── Shortcode box ─── */
@@ -338,6 +347,95 @@ class PF_Admin {
         </div>
         <script>
         jQuery(function($){ $('.pf-color-field').wpColorPicker(); });
+        </script>
+        <?php
+    }
+
+    /* ─── Email Styling box ─── */
+
+    public function render_email_styles_box( $post ) {
+        $es = get_post_meta( $post->ID, '_pf_email_styles', true );
+        $es = wp_parse_args( (array) $es, array(
+            'logo_id'      => 0,
+            'accent_color' => '#000000',
+            'heading'      => '',
+            'sub_heading'  => '',
+        ) );
+        $logo_url = $es['logo_id'] ? wp_get_attachment_image_url( $es['logo_id'], 'medium' ) : '';
+        ?>
+        <div class="pf-email-styles-wrap">
+            <p class="description"><?php esc_html_e( 'Customise the results email that gets sent to users. Leave fields blank to use defaults.', 'product-finder' ); ?></p>
+
+            <div class="pf-dn-grid">
+                <!-- Logo -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Logo', 'product-finder' ); ?></legend>
+                    <p>
+                        <input type="hidden" name="pf_email[logo_id]" value="<?php echo esc_attr( $es['logo_id'] ); ?>" class="pf-email-logo-id">
+                        <div class="pf-email-logo-preview" <?php echo $logo_url ? '' : 'style="display:none;"'; ?>>
+                            <img src="<?php echo esc_url( $logo_url ); ?>" alt="" style="max-width:200px;max-height:80px;height:auto;display:block;margin-bottom:6px;border:1px solid #dcdcde;border-radius:4px;">
+                            <button type="button" class="button pf-email-remove-logo"><?php esc_html_e( 'Remove Logo', 'product-finder' ); ?></button>
+                        </div>
+                        <button type="button" class="button pf-email-select-logo"><?php esc_html_e( 'Select Logo', 'product-finder' ); ?></button>
+                        <span class="description"><?php esc_html_e( 'Displayed at the top of the email.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
+
+                <!-- Accent Colour -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Accent Colour', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Top Strip & Button Background', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_email[accent_color]" value="<?php echo esc_attr( $es['accent_color'] ); ?>" class="pf-color-field" data-default-color="#000000">
+                        <span class="description"><?php esc_html_e( 'Used for the top colour strip, "Shop the Look" button, and "Add to Cart" buttons.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
+
+                <!-- Heading -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Heading', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Main Heading', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_email[heading]" value="<?php echo esc_attr( $es['heading'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Your Personalised Routine', 'product-finder' ); ?>">
+                        <span class="description"><?php esc_html_e( 'The large heading displayed under the logo. Defaults to the finder title.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
+
+                <!-- Sub Heading -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Sub Heading', 'product-finder' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( 'Text Under Heading', 'product-finder' ); ?></label><br>
+                        <input type="text" name="pf_email[sub_heading]" value="<?php echo esc_attr( $es['sub_heading'] ); ?>" class="regular-text" placeholder="<?php esc_attr_e( 'e.g. Based on your answers, here are your recommended products:', 'product-finder' ); ?>">
+                        <span class="description"><?php esc_html_e( 'Smaller text shown below the main heading.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
+            </div>
+        </div>
+        <script>
+        jQuery(function($){
+            // Re-init colour picker for any new fields.
+            $('.pf-email-styles-wrap .pf-color-field').not('.wp-color-picker').wpColorPicker();
+
+            // Logo upload.
+            $(document).on('click', '.pf-email-select-logo', function(){
+                var frame = wp.media({ title: 'Select Logo', button: { text: 'Use this image' }, multiple: false, library: { type: 'image' } });
+                frame.on('select', function(){
+                    var att = frame.state().get('selection').first().toJSON();
+                    var url = att.sizes && att.sizes.medium ? att.sizes.medium.url : att.url;
+                    $('.pf-email-logo-id').val(att.id);
+                    $('.pf-email-logo-preview img').attr('src', url);
+                    $('.pf-email-logo-preview').show();
+                });
+                frame.open();
+            });
+
+            $(document).on('click', '.pf-email-remove-logo', function(){
+                $('.pf-email-logo-id').val('');
+                $('.pf-email-logo-preview').hide();
+                $('.pf-email-logo-preview img').attr('src', '');
+            });
+        });
         </script>
         <?php
     }
@@ -782,6 +880,16 @@ class PF_Admin {
         $dn_styles['tabs_margin']  = sanitize_text_field( $raw_dn['tabs_margin'] ?? '' );
         $dn_styles['tabs_align']   = sanitize_text_field( $raw_dn['tabs_align'] ?? '' );
         update_post_meta( $post_id, '_pf_dn_styles', $dn_styles );
+
+        // Save Email styles
+        $raw_email    = $_POST['pf_email'] ?? array();
+        $email_styles = array(
+            'logo_id'      => absint( $raw_email['logo_id'] ?? 0 ),
+            'accent_color' => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
+            'heading'      => sanitize_text_field( $raw_email['heading'] ?? '' ),
+            'sub_heading'  => sanitize_text_field( $raw_email['sub_heading'] ?? '' ),
+        );
+        update_post_meta( $post_id, '_pf_email_styles', $email_styles );
     }
 
     private function sanitize_questions( $raw ) {

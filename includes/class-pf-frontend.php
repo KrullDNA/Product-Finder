@@ -81,11 +81,23 @@ class PF_Frontend {
             wp_enqueue_script( 'wc-add-to-cart-variation' );
         }
 
+        // Check if we have a results session token in the URL.
+        $results_token = isset( $_GET['pf_results'] ) ? preg_replace( '/[^a-zA-Z0-9]/', '', $_GET['pf_results'] ) : '';
+
+        // Build the base page URL (without query params) for constructing results URLs.
+        $page_url = get_permalink();
+        if ( ! $page_url ) {
+            global $wp;
+            $page_url = home_url( add_query_arg( array(), $wp->request ) );
+        }
+
         wp_localize_script( 'pf-frontend', 'pfFrontend', array(
-            'ajax_url'  => admin_url( 'admin-ajax.php' ),
-            'nonce'     => wp_create_nonce( 'pf_frontend_nonce' ),
-            'finder_id' => $finder_id,
-            'i18n'      => array(
+            'ajax_url'      => admin_url( 'admin-ajax.php' ),
+            'nonce'         => wp_create_nonce( 'pf_frontend_nonce' ),
+            'finder_id'     => $finder_id,
+            'page_url'      => $page_url,
+            'results_token' => $results_token,
+            'i18n'          => array(
                 'next'         => __( 'Continue', 'product-finder' ),
                 'back'         => __( 'Back', 'product-finder' ),
                 'skip_email'   => __( 'Skip & View Results', 'product-finder' ),

@@ -33,10 +33,17 @@
         init: function () {
             if (!this.totalQ) return;
             this.applyI18n();
+            this.bindGlobal();
+
+            // If a results token is present in the URL, skip straight to results.
+            if (pfFrontend.results_token) {
+                this.loadSessionResults(pfFrontend.results_token);
+                return;
+            }
+
             this.history.push({ type: 'question', qi: 0 });
             this.renderQuestion(0);
             this.updateProgress();
-            this.bindGlobal();
         },
 
         /* ───────── i18n labels ───────── */
@@ -484,32 +491,92 @@
                 return;
             }
 
-            // First compute results to get product IDs, then send email
-            this.computeResults(function (data) {
-                var postData = {
-                    action: 'pf_send_results_email',
-                    nonce: pfFrontend.nonce,
-                    finder_id: self.finderId,
-                    email: email,
-                    product_ids: data.product_ids
-                };
+            $msg.text('Sending…').css('color', '#666').show();
 
-                // In Beauty mode, pass variation-aware product data for the email.
-                var opts = data.options || self.options;
-                if (opts.finder_type === 'beauty' && data.products && data.products.length) {
-                    postData.products_data = JSON.stringify(data.products);
+            // Step 1: Save session to get a unique results URL.
+            $.post(pfFrontend.ajax_url, {
+                action: 'pf_save_results_session',
+                nonce: pfFrontend.nonce,
+                finder_id: self.finderId,
+                answers: JSON.stringify(self.answers),
+                followup_answers: JSON.stringify(self.followupAnswers)
+            }, function (sessionRes) {
+                if (!sessionRes.success) {
+                    $msg.text(pfFrontend.i18n.email_fail).css('color', '#b32d2e').show();
+                    return;
                 }
 
-                $.post(pfFrontend.ajax_url, postData, function (res) {
-                    if (res.success) {
-                        $msg.text(pfFrontend.i18n.email_success).css('color', '#00a32a').show();
-                        // Show view results button
-                        self.$emailScreen.find('.pf-send-email').text(pfFrontend.i18n.view_results).removeClass('pf-send-email').addClass('pf-btn-view-results');
-                        self._cachedResults = data;
-                    } else {
-                        $msg.text(res.data && res.data.message ? res.data.message : pfFrontend.i18n.email_fail).css('color', '#b32d2e').show();
+                var token = sessionRes.data.token;
+                var baseUrl = pfFrontend.page_url || window.location.href.split('?')[0];
+                var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
+                var resultsUrl = baseUrl + sep + 'pf_results=' + encodeURIComponent(token);
+
+                // Step 2: Compute results to get product IDs for the email.
+                self.computeResults(function (data) {
+                    var postData = {
+                        action: 'pf_send_results_email',
+                        nonce: pfFrontend.nonce,
+                        finder_id: self.finderId,
+                        email: email,
+                        product_ids: data.product_ids,
+                        results_url: resultsUrl
+                    };
+
+                    // Pass full product data (with variation + category info) for the email.
+                    if (data.products && data.products.length) {
+                        postData.products_data = JSON.stringify(data.products);
                     }
+
+                    $.post(pfFrontend.ajax_url, postData, function (res) {
+                        if (res.success) {
+                            // Redirect to results page immediately.
+                            window.location.href = resultsUrl;
+                        } else {
+                            $msg.text(res.data && res.data.message ? res.data.message : pfFrontend.i18n.email_fail).css('color', '#b32d2e').show();
+                        }
+                    });
                 });
+            });
+        },
+
+        /**
+         * Load results from a stored session token.
+         * Skips the quiz and shows results directly.
+         */
+        loadSessionResults: function (token) {
+            var self = this;
+
+            // Hide quiz UI, show loading.
+            this.$container.hide();
+            this.$emailScreen.hide();
+            this.$el.find('.pf-progress-bar-wrap').hide();
+            this.$loadingScreen.fadeIn(300);
+
+            // Re-compute results using the stored answers.
+            $.post(pfFrontend.ajax_url, {
+                action: 'pf_compute_results',
+                nonce: pfFrontend.nonce,
+                finder_id: self.finderId,
+                answers: '{}',
+                followup_answers: '{}',
+                results_token: token
+            }, function (res) {
+                if (res.success) {
+                    setTimeout(function () { self.showResults(res.data); }, 800);
+                } else {
+                    // Token invalid or expired – start quiz normally.
+                    self.$loadingScreen.hide();
+                    self.$el.find('.pf-progress-bar-wrap').show();
+                    self.history.push({ type: 'question', qi: 0 });
+                    self.renderQuestion(0);
+                    self.updateProgress();
+                }
+            }).fail(function () {
+                self.$loadingScreen.hide();
+                self.$el.find('.pf-progress-bar-wrap').show();
+                self.history.push({ type: 'question', qi: 0 });
+                self.renderQuestion(0);
+                self.updateProgress();
             });
         },
 
@@ -1008,6 +1075,14 @@
             this.$emailScreen.find('.pf-email-message').hide();
             this.$emailScreen.find('.pf-btn-view-results').text(pfFrontend.i18n.send_results).removeClass('pf-btn-view-results').addClass('pf-send-email');
 
+            // Remove pf_results from URL if present.
+            if (window.history && window.history.replaceState) {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('pf_results');
+                window.history.replaceState({}, '', url.toString());
+            }
+
+            this.$el.find('.pf-progress-bar-wrap').show();
             this.$container.show();
             this.renderQuestion(0);
             this.updateProgress();
