@@ -101,12 +101,13 @@ class PF_Email {
         // Get email style settings.
         $email_styles = get_post_meta( $finder_id, '_pf_email_styles', true );
         $email_styles = wp_parse_args( (array) $email_styles, array(
-            'logo_id'          => 0,
-            'header_image_id'  => 0,
-            'accent_color'     => '#000000',
-            'heading'          => '',
-            'sub_heading'      => '',
-            'email_subject'    => '',
+            'logo_id'                 => 0,
+            'header_image_id'         => 0,
+            'header_image_mobile_id'  => 0,
+            'accent_color'            => '#000000',
+            'heading'                 => '',
+            'sub_heading'             => '',
+            'email_subject'           => '',
             'footer_text'      => '',
         ) );
 
@@ -278,18 +279,18 @@ class PF_Email {
 
         // Product info - right.
         $html .= '<td class="pf-info-cell" style="vertical-align:middle;padding:16px 16px 16px 0;">';
-        $html .= '<div class="pf-title" style="font-size:18px;font-weight:400;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
+        $html .= '<div class="pf-title" style="font-size:18px;font-weight:300;color:#000;margin-bottom:2px;">' . esc_html( $display_name ) . '</div>';
         if ( $name_subheading ) {
-            $html .= '<div class="pf-subheading" style="font-size:11px;font-weight:400;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
+            $html .= '<div class="pf-subheading" style="font-size:11px;font-weight:500;color:#000;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:6px;">' . esc_html( $name_subheading ) . '</div>';
         }
         if ( $short_description ) {
             $html .= '<div class="pf-short-desc" style="font-size:13px;font-weight:400;color:#555;margin:15px 0;line-height:1.4;">' . wp_kses_post( $short_description ) . '</div>';
         }
-        $html .= '<div class="pf-price" style="font-size:16px;font-weight:700;color:#000;margin-bottom:12px;">' . wp_strip_all_tags( $price ) . '</div>';
+        $html .= '<div class="pf-price" style="font-size:16px;font-weight:700;color:#000;margin-bottom:20px;">' . wp_strip_all_tags( $price ) . '</div>';
 
         // Swatch row.
         if ( $swatch_html || $swatch_label ) {
-            $html .= '<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;"><tr>';
+            $html .= '<table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr>';
             $html .= $swatch_html;
             if ( $swatch_label ) {
                 $html .= '<td class="pf-swatch-label" style="vertical-align:middle;font-size:14px;color:#333;">' . esc_html( $swatch_label ) . '</td>';
@@ -327,6 +328,10 @@ class PF_Email {
         if ( ! empty( $email_styles['header_image_id'] ) ) {
             $header_image_url = wp_get_attachment_image_url( absint( $email_styles['header_image_id'] ), 'full' );
         }
+        $header_image_mobile_url = '';
+        if ( ! empty( $email_styles['header_image_mobile_id'] ) ) {
+            $header_image_mobile_url = wp_get_attachment_image_url( absint( $email_styles['header_image_mobile_id'] ), 'full' );
+        }
 
         $html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">';
         $html .= '<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">';
@@ -344,6 +349,8 @@ class PF_Email {
         $html .= '.pf-price{font-size:20px!important;}';
         $html .= '.pf-swatch-label{font-size:17.5px!important;}';
         $html .= '.pf-shop-btn{font-size:16.25px!important;}';
+        $html .= '.pf-header-desktop{display:none!important;}';
+        $html .= '.pf-header-mobile{display:block!important;}';
         $html .= '}';
         $html .= '</style>';
         $html .= '</head><body style="margin:0;padding:0;background:#ffffff;font-family:\'Montserrat\',Verdana,Arial,Helvetica,sans-serif;">';
@@ -366,7 +373,14 @@ class PF_Email {
             // Build alt text from heading + plain-text sub-heading.
             $alt_text = $heading . ' — ' . wp_strip_all_tags( $sub_heading );
             $html .= '<tr><td style="text-align:center;padding:16px 0 24px;">';
-            $html .= '<img src="' . esc_url( $header_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="max-width:100%;height:auto;display:block;margin:0 auto;" />';
+            // Desktop header image (hidden on mobile if mobile version exists).
+            $desktop_style = 'max-width:100%;height:auto;display:block;margin:0 auto;';
+            if ( $header_image_mobile_url ) {
+                $html .= '<img class="pf-header-desktop" src="' . esc_url( $header_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="' . $desktop_style . '" />';
+                $html .= '<img class="pf-header-mobile" src="' . esc_url( $header_image_mobile_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="max-width:100%;height:auto;display:none;margin:0 auto;" />';
+            } else {
+                $html .= '<img src="' . esc_url( $header_image_url ) . '" alt="' . esc_attr( $alt_text ) . '" style="' . $desktop_style . '" />';
+            }
             $html .= '</td></tr>';
         } else {
             $html .= '<tr><td style="padding:16px 0 24px;">';
