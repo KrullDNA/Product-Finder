@@ -1,3 +1,6 @@
 # Download/packaging artifacts – not part of the plugin source
 *.zip
 *.bundle
+
+# Except the released plugin zip at the repo root
+!/product-finder-*.zip
