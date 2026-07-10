@@ -12,6 +12,70 @@ class PF_Admin {
         add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ) );
         add_action( 'save_post_product_finder', array( $this, 'save_meta' ), 10, 2 );
         add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+        add_filter( 'post_row_actions', array( $this, 'add_duplicate_link' ), 10, 2 );
+        add_action( 'admin_action_pf_duplicate_finder', array( $this, 'duplicate_finder' ) );
+    }
+
+    /* ───────────────────────── Duplicate finder ─────────────── */
+
+    /**
+     * Add a "Duplicate" link to each row in the finders list.
+     */
+    public function add_duplicate_link( $actions, $post ) {
+        if ( 'product_finder' !== $post->post_type || ! current_user_can( 'edit_post', $post->ID ) ) {
+            return $actions;
+        }
+
+        $url = wp_nonce_url(
+            add_query_arg(
+                array(
+                    'action' => 'pf_duplicate_finder',
+                    'post'   => $post->ID,
+                ),
+                admin_url( 'admin.php' )
+            ),
+            'pf_duplicate_finder_' . $post->ID
+        );
+
+        $actions['pf_duplicate'] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Duplicate', 'product-finder' ) . '</a>';
+        return $actions;
+    }
+
+    /**
+     * Clone a finder – title, status draft, and every meta row (questions,
+     * options, Day/Night styles, email styles) – then open the copy.
+     */
+    public function duplicate_finder() {
+        $post_id = absint( $_GET['post'] ?? 0 );
+        check_admin_referer( 'pf_duplicate_finder_' . $post_id );
+
+        $post = get_post( $post_id );
+        if ( ! $post || 'product_finder' !== $post->post_type || ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_die( esc_html__( 'You are not allowed to duplicate this finder.', 'product-finder' ) );
+        }
+
+        $new_id = wp_insert_post( array(
+            'post_type'   => 'product_finder',
+            'post_status' => 'draft',
+            /* translators: %s: original finder title */
+            'post_title'  => sprintf( __( '%s (Copy)', 'product-finder' ), $post->post_title ),
+        ), true );
+
+        if ( is_wp_error( $new_id ) ) {
+            wp_die( esc_html( $new_id->get_error_message() ) );
+        }
+
+        foreach ( get_post_meta( $post_id ) as $key => $values ) {
+            if ( in_array( $key, array( '_edit_lock', '_edit_last' ), true ) ) {
+                continue;
+            }
+            foreach ( $values as $value ) {
+                add_post_meta( $new_id, $key, maybe_unserialize( $value ) );
+            }
+        }
+
+        wp_safe_redirect( get_edit_post_link( $new_id, 'raw' ) );
+        exit;
     }
 
     /* ───────────────────────── Assets ───────────────────────── */
@@ -140,6 +204,9 @@ class PF_Admin {
             'cols_mobile'       => 1,
             'finder_type'       => 'cosmeceuticals',
             'enable_day_night'  => 0,
+            'enable_consent'    => 1,
+            'consent_text'      => '',
+            'notify_email'      => '',
         ) );
 
         wp_nonce_field( 'pf_save_meta', 'pf_meta_nonce' );
@@ -166,6 +233,23 @@ class PF_Admin {
             </label>
             <p class="description"><?php esc_html_e( 'Split results into Day and Night tabs. A "Set" dropdown will appear on each product row.', 'product-finder' ); ?></p>
         </div>
+        <hr>
+        <p>
+            <label>
+                <input type="checkbox" name="pf_options[enable_consent]" value="1" <?php checked( $options['enable_consent'], 1 ); ?>>
+                <strong><?php esc_html_e( 'Marketing Consent Checkbox', 'product-finder' ); ?></strong>
+            </label>
+            <span class="description"><?php esc_html_e( 'Show an opt-in checkbox on the email screen. The choice is saved with each submission.', 'product-finder' ); ?></span>
+        </p>
+        <p>
+            <label><strong><?php esc_html_e( 'Consent Label', 'product-finder' ); ?></strong></label><br>
+            <input type="text" name="pf_options[consent_text]" value="<?php echo esc_attr( $options['consent_text'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( "I'd like to receive news and offers", 'product-finder' ); ?>">
+        </p>
+        <p>
+            <label><strong><?php esc_html_e( 'Notify on Completion', 'product-finder' ); ?></strong></label><br>
+            <input type="email" name="pf_options[notify_email]" value="<?php echo esc_attr( $options['notify_email'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. you@yourshop.com', 'product-finder' ); ?>">
+            <span class="description"><?php esc_html_e( 'Optional. Sends an instant lead alert to this address every time someone completes the finder and submits their email. Leave blank to disable.', 'product-finder' ); ?></span>
+        </p>
         <hr>
         <p>
             <label><strong><?php esc_html_e( 'CrocoBlock Listing Template', 'product-finder' ); ?></strong></label><br>
@@ -456,6 +540,16 @@ class PF_Admin {
                         <span class="description"><?php esc_html_e( 'Text displayed at the bottom of the email. Leave blank for default.', 'product-finder' ); ?></span>
                     </p>
                 </fieldset>
+
+                <!-- Test Email -->
+                <fieldset class="pf-dn-fieldset">
+                    <legend><?php esc_html_e( 'Test Email', 'product-finder' ); ?></legend>
+                    <p>
+                        <button type="button" class="button pf-send-test-email" data-finder-id="<?php echo esc_attr( $post->ID ); ?>"><?php esc_html_e( 'Send Test Email', 'product-finder' ); ?></button>
+                        <span class="pf-test-email-result" style="margin-left:8px;"></span><br>
+                        <span class="description"><?php esc_html_e( 'Sends a sample results email (using a few placeholder products) to your account email address. Uses the last saved settings – save the finder first to preview unsaved changes.', 'product-finder' ); ?></span>
+                    </p>
+                </fieldset>
             </div>
         </div>
         <script>
@@ -499,6 +593,29 @@ class PF_Admin {
                 $('.pf-email-header-image-id').val('');
                 $('.pf-email-header-image-preview').hide();
                 $('.pf-email-header-image-preview img').attr('src', '');
+            });
+
+            // Send test email.
+            $(document).on('click', '.pf-send-test-email', function(){
+                var $btn    = $(this);
+                var $result = $btn.siblings('.pf-test-email-result');
+                $btn.prop('disabled', true);
+                $result.css('color', '#646970').text('<?php echo esc_js( __( 'Sending…', 'product-finder' ) ); ?>');
+                $.post(pfAdmin.ajax_url, {
+                    action: 'pf_send_test_email',
+                    nonce: pfAdmin.nonce,
+                    finder_id: $btn.data('finder-id')
+                }, function(res){
+                    $btn.prop('disabled', false);
+                    if (res && res.success) {
+                        $result.css('color', '#00a32a').text(res.data.message);
+                    } else {
+                        $result.css('color', '#b32d2e').text(res && res.data && res.data.message ? res.data.message : '<?php echo esc_js( __( 'Failed to send.', 'product-finder' ) ); ?>');
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false);
+                    $result.css('color', '#b32d2e').text('<?php echo esc_js( __( 'Failed to send.', 'product-finder' ) ); ?>');
+                });
             });
         });
         </script>
@@ -920,6 +1037,9 @@ class PF_Admin {
             'cols_mobile'      => absint( $raw_options['cols_mobile'] ?? 1 ),
             'finder_type'      => $finder_type,
             'enable_day_night' => ! empty( $raw_options['enable_day_night'] ) ? 1 : 0,
+            'enable_consent'   => ! empty( $raw_options['enable_consent'] ) ? 1 : 0,
+            'consent_text'     => sanitize_text_field( $raw_options['consent_text'] ?? '' ),
+            'notify_email'     => sanitize_email( $raw_options['notify_email'] ?? '' ),
         );
         update_post_meta( $post_id, '_pf_options', $options );
 

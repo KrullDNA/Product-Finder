@@ -522,13 +522,20 @@
 
                 // Step 2: Compute results to get product IDs for the email.
                 self.computeResults(function (data) {
+                    var consent = self.$emailScreen.find('.pf-consent-checkbox').is(':checked') ? 1 : 0;
+
                     var postData = {
                         action: 'pf_send_results_email',
                         nonce: pfFrontend.nonce,
                         finder_id: self.finderId,
                         email: email,
                         product_ids: data.product_ids,
-                        results_url: resultsUrl
+                        results_url: resultsUrl,
+                        consent: consent,
+                        // Raw answers so the server can log the submission
+                        // with readable question/answer text.
+                        answers: JSON.stringify(self.answers),
+                        followup_answers: JSON.stringify(self.followupAnswers)
                     };
 
                     // Pass full product data (with variation + category info) for the email.
@@ -1093,6 +1100,7 @@
 
             // Reset email screen
             this.$emailScreen.find('.pf-email-input').val('');
+            this.$emailScreen.find('.pf-consent-checkbox').prop('checked', false);
             this.$emailScreen.find('.pf-email-message').hide();
             this.$emailScreen.find('.pf-btn-view-results').text(pfFrontend.i18n.send_results).removeClass('pf-btn-view-results').addClass('pf-send-email');
 

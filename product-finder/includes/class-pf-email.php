@@ -15,6 +15,42 @@ class PF_Email {
         // Save results to a session for shareable URL.
         add_action( 'wp_ajax_pf_save_results_session', array( $this, 'save_results_session' ) );
         add_action( 'wp_ajax_nopriv_pf_save_results_session', array( $this, 'save_results_session' ) );
+
+        // Admin: send a test email with placeholder products.
+        add_action( 'wp_ajax_pf_send_test_email', array( $this, 'send_test_email' ) );
+    }
+
+    /* ────────── Rate limiting ──────── */
+
+    /**
+     * Max results emails a single IP may trigger per hour. The endpoint is
+     * open to visitors, so without a cap it could be scripted to spam
+     * arbitrary inboxes with the site's branded email.
+     */
+    const RATE_LIMIT = 5;
+
+    /**
+     * Returns true if the current IP is within its hourly send allowance
+     * (and consumes one slot); false if the limit is exhausted.
+     */
+    private function check_rate_limit() {
+        $ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+        if ( ! $ip ) {
+            return false;
+        }
+
+        $key   = 'pf_email_rl_' . md5( $ip );
+        $count = (int) get_transient( $key );
+
+        if ( $count >= self::RATE_LIMIT ) {
+            return false;
+        }
+
+        // Each send resets the hour countdown (transients can't be updated
+        // without touching the TTL) – slightly stricter than a fixed window,
+        // which is fine for abuse prevention.
+        set_transient( $key, $count + 1, HOUR_IN_SECONDS );
+        return true;
     }
 
     /**
@@ -70,9 +106,14 @@ class PF_Email {
         $finder_id   = absint( $_POST['finder_id'] ?? 0 );
         $product_ids = array_map( 'absint', (array) ( $_POST['product_ids'] ?? array() ) );
         $results_url = esc_url_raw( $_POST['results_url'] ?? '' );
+        $consent     = ! empty( $_POST['consent'] );
 
         if ( ! is_email( $email ) || empty( $product_ids ) ) {
             wp_send_json_error( array( 'message' => __( 'Invalid email or no products found.', 'product-finder' ) ) );
+        }
+
+        if ( ! $this->check_rate_limit() ) {
+            wp_send_json_error( array( 'message' => __( 'Too many requests. Please try again later.', 'product-finder' ) ) );
         }
 
         // Accept optional products_data (variation-aware) from the frontend.
@@ -126,13 +167,169 @@ class PF_Email {
             'Content-Type: text/html; charset=UTF-8',
         );
 
+        // Record the lead before sending – the visitor completed the quiz and
+        // gave their address regardless of whether the mail server cooperates.
+        $lead_id = $this->record_lead( $finder_id, $email, $consent, $products_data, $product_ids, $day_night, $day_products, $night_products );
+
         $sent = wp_mail( $email, $subject, $body, $headers );
+
+        $this->notify_owner( $finder_id, $finder_title, $email, $consent, $lead_id );
 
         if ( $sent ) {
             wp_send_json_success( array( 'message' => __( 'Results sent to your email!', 'product-finder' ) ) );
         } else {
             wp_send_json_error( array( 'message' => __( 'Failed to send email. Please try again.', 'product-finder' ) ) );
         }
+    }
+
+    /**
+     * Store the submission in the leads table with readable answers and the
+     * recommended products. Returns the lead ID (or false).
+     */
+    private function record_lead( $finder_id, $email, $consent, $products_data, $product_ids, $day_night, $day_products, $night_products ) {
+        if ( ! class_exists( 'PF_Leads' ) ) {
+            return false;
+        }
+
+        $answers          = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
+        $followup_answers = json_decode( stripslashes( $_POST['followup_answers'] ?? '{}' ), true );
+        $readable_answers = PF_Leads::resolve_answers( $finder_id, (array) $answers, (array) $followup_answers );
+
+        // Normalise a product entry to id/name/category (+ optional Day/Night set).
+        $normalise = function ( $p, $set = '' ) {
+            $entry = array(
+                'id'           => absint( $p['id'] ?? 0 ),
+                'variation_id' => absint( $p['variation_id'] ?? 0 ),
+                'name'         => sanitize_text_field( $p['name'] ?? '' ),
+                'category'     => sanitize_key( $p['result_category'] ?? '' ),
+            );
+            if ( $set ) {
+                $entry['set'] = $set;
+            }
+            if ( '' === $entry['name'] && $entry['id'] ) {
+                $entry['name'] = get_the_title( $entry['id'] );
+            }
+            return $entry;
+        };
+
+        $products = array();
+        if ( $day_night && ( $day_products || $night_products ) ) {
+            foreach ( (array) $day_products as $p ) {
+                $products[] = $normalise( $p, 'day' );
+            }
+            foreach ( (array) $night_products as $p ) {
+                $products[] = $normalise( $p, 'night' );
+            }
+        } elseif ( $products_data ) {
+            foreach ( $products_data as $p ) {
+                $products[] = $normalise( $p );
+            }
+        } else {
+            foreach ( $product_ids as $pid ) {
+                $products[] = $normalise( array( 'id' => $pid ) );
+            }
+        }
+
+        return PF_Leads::add_lead( $finder_id, $email, $consent, $readable_answers, $products );
+    }
+
+    /**
+     * Send an instant lead alert to the finder's notification address, if set.
+     */
+    private function notify_owner( $finder_id, $finder_title, $email, $consent, $lead_id ) {
+        $options      = get_post_meta( $finder_id, '_pf_options', true );
+        $notify_email = sanitize_email( is_array( $options ) ? ( $options['notify_email'] ?? '' ) : '' );
+
+        if ( ! is_email( $notify_email ) ) {
+            return;
+        }
+
+        $submissions_url = admin_url( 'edit.php?post_type=product_finder&page=pf-submissions&finder=' . $finder_id );
+
+        /* translators: %s: finder title */
+        $subject = sprintf( __( 'New Product Finder submission: %s', 'product-finder' ), $finder_title );
+
+        $lines   = array();
+        /* translators: %s: finder title */
+        $lines[] = sprintf( __( 'Someone just completed "%s".', 'product-finder' ), $finder_title );
+        $lines[] = '';
+        $lines[] = __( 'Email:', 'product-finder' ) . ' ' . $email;
+        $lines[] = __( 'Marketing consent:', 'product-finder' ) . ' ' . ( $consent ? __( 'Yes', 'product-finder' ) : __( 'No', 'product-finder' ) );
+        $lines[] = '';
+        $lines[] = __( 'View all submissions:', 'product-finder' );
+        $lines[] = $submissions_url;
+
+        wp_mail( $notify_email, $subject, implode( "\n", $lines ) );
+    }
+
+    /* ────────── Admin: test email ──────── */
+
+    /**
+     * Send a sample results email (placeholder products) to the current
+     * admin user so the Email Styling settings can be previewed quickly.
+     */
+    public function send_test_email() {
+        check_ajax_referer( 'pf_admin_nonce', 'nonce' );
+
+        $finder_id = absint( $_POST['finder_id'] ?? 0 );
+        if ( ! $finder_id || ! current_user_can( 'edit_post', $finder_id ) ) {
+            wp_send_json_error( array( 'message' => __( 'Permission denied.', 'product-finder' ) ) );
+        }
+
+        $user  = wp_get_current_user();
+        $to    = $user && is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' );
+
+        if ( ! function_exists( 'wc_get_products' ) ) {
+            wp_send_json_error( array( 'message' => __( 'WooCommerce is not active.', 'product-finder' ) ) );
+        }
+
+        // A few real products make the preview representative.
+        $sample_products = wc_get_products( array(
+            'limit'  => 3,
+            'status' => 'publish',
+        ) );
+        if ( empty( $sample_products ) ) {
+            wp_send_json_error( array( 'message' => __( 'No published products found to preview with.', 'product-finder' ) ) );
+        }
+
+        $product_ids   = array();
+        $products_data = array();
+        $categories    = array( 'cleanser', 'moisturiser', 'specialty' );
+        foreach ( array_values( $sample_products ) as $i => $product ) {
+            $product_ids[]   = $product->get_id();
+            $products_data[] = array(
+                'id'              => $product->get_id(),
+                'name'            => $product->get_name(),
+                'result_category' => $categories[ $i ] ?? '',
+            );
+        }
+
+        $email_styles = get_post_meta( $finder_id, '_pf_email_styles', true );
+        $email_styles = wp_parse_args( (array) $email_styles, array(
+            'logo_id'          => 0,
+            'header_image_id'  => 0,
+            'accent_color'     => '#000000',
+            'heading'          => '',
+            'sub_heading'      => '',
+            'email_subject'    => '',
+            'footer_text'      => '',
+        ) );
+
+        $finder_title = get_the_title( $finder_id );
+        $subject      = ! empty( $email_styles['email_subject'] )
+            ? $email_styles['email_subject']
+            : sprintf( __( 'Your %s Results', 'product-finder' ), $finder_title );
+        $subject      = '[' . __( 'TEST', 'product-finder' ) . '] ' . $subject;
+
+        $body = $this->build_email_body( $finder_id, $finder_title, $product_ids, $products_data, home_url( '/' ), $email_styles );
+
+        $sent = wp_mail( $to, $subject, $body, array( 'Content-Type: text/html; charset=UTF-8' ) );
+
+        if ( $sent ) {
+            /* translators: %s: email address */
+            wp_send_json_success( array( 'message' => sprintf( __( 'Test email sent to %s.', 'product-finder' ), $to ) ) );
+        }
+        wp_send_json_error( array( 'message' => __( 'Failed to send test email. Check your mail configuration.', 'product-finder' ) ) );
     }
 
     /**
