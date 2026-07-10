@@ -63,19 +63,21 @@
      * Show/hide category <option> elements based on finder type.
      * Each option has data-type="beauty" or data-type="cosmeceuticals".
      * The "— None —" option (no data-type) is always visible.
+     * Options are also disabled because Safari ignores display:none
+     * on <option> elements.
      */
     function filterCategoryOptions( type ) {
         $('.pf-product-category').each(function () {
             var $select = $(this);
             $select.find('option[data-type]').each(function () {
                 if ( $(this).data('type') === type ) {
-                    $(this).show();
+                    $(this).show().prop('disabled', false);
                 } else {
                     // If this hidden option is currently selected, reset to empty.
                     if ( $(this).is(':selected') ) {
                         $select.val('');
                     }
-                    $(this).hide();
+                    $(this).hide().prop('disabled', true);
                 }
             });
         });
@@ -448,7 +450,6 @@
     function addFollowup() {
         var $answer = $(this).closest('.pf-answer');
         var $wrap   = $answer.find('.pf-followup-wrap');
-        console.log('[PF] addFollowup clicked', { answer: $answer.length, wrap: $wrap.length, wrapDisplay: $wrap.css('display') });
         $wrap.slideDown(200);
         $answer.find('.pf-followup-add').hide();
     }

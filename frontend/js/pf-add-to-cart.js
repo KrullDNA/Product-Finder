@@ -14,6 +14,14 @@
 (function ($) {
     'use strict';
 
+    // Verbose console logging is only active with ?pf_debug=1 in the URL.
+    var PF_DEBUG = /[?&]pf_debug=1/.test(window.location.search);
+    function pfLog() {
+        if (PF_DEBUG && window.console) {
+            console.log.apply(console, arguments);
+        }
+    }
+
     /* ── Variation event handlers ── */
 
     // When a swatch plugin resolves a variation, enable the button and
@@ -23,7 +31,7 @@
 
         var $target = $(e.target);
 
-        console.log('[PF ATC] found_variation fired, variation_id:', variation.variation_id,
+        pfLog('[PF ATC] found_variation fired, variation_id:', variation.variation_id,
             'target:', $target.get(0));
 
         // Walk up to the listing item container.
@@ -36,18 +44,18 @@
             '.jet-listing-grid__items > div'
         );
         if (!$item.length) {
-            console.log('[PF ATC] No listing item container found for found_variation');
+            pfLog('[PF ATC] No listing item container found for found_variation');
             return;
         }
 
         var $btn = $item.find('.pf-atc-btn[data-pf-variable]');
         if (!$btn.length) {
-            console.log('[PF ATC] No pf-atc-btn found in listing item');
+            pfLog('[PF ATC] No pf-atc-btn found in listing item');
             return;
         }
 
         // Enable the button.
-        console.log('[PF ATC] Enabling button for product:', $btn.data('product_id'),
+        pfLog('[PF ATC] Enabling button for product:', $btn.data('product_id'),
             'variation:', variation.variation_id);
         $btn.removeClass('pf-atc-btn--disabled');
 
@@ -128,7 +136,7 @@
             }
         });
 
-        console.log('[PF ATC] Adding variable product to cart:', postData);
+        pfLog('[PF ATC] Adding variable product to cart:', postData);
 
         $btn.removeClass('added').addClass('loading');
 
@@ -169,7 +177,7 @@
             $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
             $(document.body).trigger('wc_fragment_refresh');
 
-            console.log('[PF ATC] Added to cart successfully, variation:', variationId);
+            pfLog('[PF ATC] Added to cart successfully, variation:', variationId);
         }).fail(function (jqXHR, textStatus) {
             $btn.removeClass('loading');
             console.error('[PF ATC] AJAX add to cart failed:', textStatus);
@@ -212,7 +220,7 @@
             }
         });
 
-        console.log('[PF ATC] Beauty mode: adding variation to cart:', postData);
+        pfLog('[PF ATC] Beauty mode: adding variation to cart:', postData);
 
         $btn.addClass('loading').text('Adding…');
 
@@ -248,7 +256,7 @@
             $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
             $(document.body).trigger('wc_fragment_refresh');
 
-            console.log('[PF ATC] Beauty mode: added variation', variationId, 'to cart');
+            pfLog('[PF ATC] Beauty mode: added variation', variationId, 'to cart');
         }).fail(function (jqXHR, textStatus) {
             $btn.removeClass('loading').text(pfFrontend.i18n.add_to_cart || 'Add to Cart');
             console.error('[PF ATC] Beauty AJAX add to cart failed:', textStatus);
@@ -296,7 +304,7 @@
             }
         });
 
-        console.log('[PF ATC] Shade Cart: adding to cart', postData);
+        pfLog('[PF ATC] Shade Cart: adding to cart', postData);
 
         // Preserve the button inner HTML so we can restore it.
         var originalHtml = $btn.html();
@@ -333,7 +341,7 @@
             $(document.body).trigger('added_to_cart', [fragments, cartHash, $btn]);
             $(document.body).trigger('wc_fragment_refresh');
 
-            console.log('[PF ATC] Shade Cart: added variation', variationId);
+            pfLog('[PF ATC] Shade Cart: added variation', variationId);
         }).fail(function (jqXHR, textStatus) {
             $btn.removeClass('loading');
             console.error('[PF ATC] Shade Cart: AJAX failed', textStatus);

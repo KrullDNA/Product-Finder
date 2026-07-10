@@ -965,6 +965,13 @@ class PF_Admin {
         if ( ! is_array( $raw ) ) {
             return $clean;
         }
+        $valid_categories = array(
+            '',
+            // Beauty
+            'base', 'concealer', 'lip', 'cheek', 'lip_cheek', 'eye',
+            // Cosmeceuticals
+            'cleanser', 'exfoliator', 'moisturiser', 'essential', 'specialty',
+        );
         foreach ( $raw as $q ) {
             $question = array(
                 'text'        => sanitize_text_field( $q['text'] ?? '' ),
@@ -981,7 +988,6 @@ class PF_Admin {
                         'products'    => array(),
                     );
                     if ( ! empty( $a['products'] ) && is_array( $a['products'] ) ) {
-                        $valid_categories = array( '', 'base', 'concealer', 'lip', 'cheek', 'lip_cheek', 'eye' );
                         foreach ( $a['products'] as $p ) {
                             $cat = sanitize_key( $p['result_category'] ?? '' );
                             if ( ! in_array( $cat, $valid_categories, true ) ) {

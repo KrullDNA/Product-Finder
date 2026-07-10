@@ -1,6 +1,15 @@
 (function ($) {
     'use strict';
 
+    // Verbose console logging is only active with ?pf_debug=1 in the URL,
+    // so customer consoles stay clean but troubleshooting stays easy.
+    var PF_DEBUG = /[?&]pf_debug=1/.test(window.location.search);
+    function pfLog() {
+        if (PF_DEBUG && window.console) {
+            console.log.apply(console, arguments);
+        }
+    }
+
     /**
      * Product Finder – Frontend Controller
      *
@@ -486,7 +495,7 @@
             var email = this.$emailScreen.find('.pf-email-input').val().trim();
             var $msg  = this.$emailScreen.find('.pf-email-message');
 
-            if (!email) {
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 $msg.text('Please enter a valid email.').css('color', '#b32d2e').show();
                 return;
             }
@@ -625,7 +634,7 @@
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
                 // Debug: log the full AJAX response
-                if (res && res.data && res.data.debug) {
+                if (PF_DEBUG && res && res.data && res.data.debug) {
                     console.group('[Product Finder] Debug – compute_results');
                     for (var i = 0; i < res.data.debug.length; i++) {
                         console.log(res.data.debug[i]);
@@ -662,7 +671,7 @@
             var self = this;
             this.$loadingScreen.hide();
 
-            console.log('[Product Finder] showResults – styles:', (data.styles || []).length,
+            pfLog('[Product Finder] showResults – styles:', (data.styles || []).length,
                 'scripts:', (data.scripts || []).length,
                 'day_night:', !!data.day_night);
 
@@ -752,7 +761,6 @@
             var colsD = opts.cols_desktop || 3;
             var colsT = opts.cols_tablet || 2;
             var colsM = opts.cols_mobile || 1;
-            var isBeauty = (opts.finder_type === 'beauty');
 
             var html = '<div class="pf-results-grid pf-cols-d-' + colsD + ' pf-cols-t-' + colsT + ' pf-cols-m-' + colsM + '">';
             for (var i = 0; i < products.length; i++) {
@@ -778,7 +786,7 @@
          * during CrocoBlock listing rendering (e.g. swatch plugin CSS).
          */
         loadStyles: function (urls) {
-            console.log('[Product Finder] loadStyles:', urls.length, 'URL(s)', urls);
+            pfLog('[Product Finder] loadStyles:', urls.length, 'URL(s)', urls);
             for (var i = 0; i < urls.length; i++) {
                 // Check if this stylesheet is already loaded.
                 var alreadyLoaded = false;
@@ -791,14 +799,14 @@
                     }
                 }
                 if (alreadyLoaded) {
-                    console.log('[Product Finder] CSS already loaded, skipping:', urls[i]);
+                    pfLog('[Product Finder] CSS already loaded, skipping:', urls[i]);
                     continue;
                 }
                 var link = document.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = urls[i];
                 document.head.appendChild(link);
-                console.log('[Product Finder] Loaded CSS:', urls[i]);
+                pfLog('[Product Finder] Loaded CSS:', urls[i]);
             }
         },
 
@@ -807,7 +815,7 @@
          * then invoke the callback once all scripts have loaded.
          */
         loadScripts: function (urls, callback) {
-            console.log('[Product Finder] loadScripts:', urls.length, 'URL(s)', urls);
+            pfLog('[Product Finder] loadScripts:', urls.length, 'URL(s)', urls);
 
             // Filter out scripts already present on the page.
             var toLoad = [];
@@ -823,11 +831,11 @@
                 if (existingSrcs.indexOf(base) === -1) {
                     toLoad.push(urls[i]);
                 } else {
-                    console.log('[Product Finder] Script already on page, skipping:', urls[i]);
+                    pfLog('[Product Finder] Script already on page, skipping:', urls[i]);
                 }
             }
 
-            console.log('[Product Finder] Scripts to load (after dedup):', toLoad.length);
+            pfLog('[Product Finder] Scripts to load (after dedup):', toLoad.length);
 
             if (!toLoad.length) {
                 callback();
@@ -840,7 +848,7 @@
                 s.src = toLoad[j];
                 s.onload = s.onerror = function () {
                     var ok = this.readyState ? /loaded|complete/.test(this.readyState) : true;
-                    console.log('[Product Finder] Script ' + (ok ? 'loaded' : 'FAILED') + ':', this.src);
+                    pfLog('[Product Finder] Script ' + (ok ? 'loaded' : 'FAILED') + ':', this.src);
                     if (++loaded >= toLoad.length) {
                         callback();
                     }
@@ -860,7 +868,7 @@
         initDynamicContent: function () {
             var $container = this.$resultsScreen.find('.pf-results-container');
 
-            console.log('[Product Finder] initDynamicContent – starting');
+            pfLog('[Product Finder] initDynamicContent – starting');
 
             // 1. Add .product class to listing items that contain variation forms.
             //    Swatch plugins (FiF VSE) use $wrap.closest('.product') to scope
@@ -885,7 +893,7 @@
                     $(this).wc_variation_form().trigger('check_variations');
                 });
             }
-            console.log('[Product Finder] WC variation forms initialized:', formsInited);
+            pfLog('[Product Finder] WC variation forms initialized:', formsInited);
 
             // 3. Ensure Elementor widget hooks are registered.
             //    When a swatch plugin's JS is loaded dynamically (after
@@ -915,18 +923,20 @@
                     });
                 }
             }
-            console.log('[Product Finder] Elementor widgets triggered:', widgetsTriggered);
+            pfLog('[Product Finder] Elementor widgets triggered:', widgetsTriggered);
 
             // 5. Log widget types for debugging
-            $container.find('[data-widget_type]').each(function () {
-                console.log('[Product Finder] Widget data-widget_type:', $(this).data('widget_type'));
-            });
-            $container.find('.elementor-widget').each(function () {
-                var classes = $(this).attr('class') || '';
-                var widgetClass = classes.match(/elementor-widget-(\S+)/);
-                console.log('[Product Finder] Widget class:', widgetClass ? widgetClass[1] : '(none)',
-                    'has data-widget_type:', !!$(this).attr('data-widget_type'));
-            });
+            if (PF_DEBUG) {
+                $container.find('[data-widget_type]').each(function () {
+                    console.log('[Product Finder] Widget data-widget_type:', $(this).data('widget_type'));
+                });
+                $container.find('.elementor-widget').each(function () {
+                    var classes = $(this).attr('class') || '';
+                    var widgetClass = classes.match(/elementor-widget-(\S+)/);
+                    console.log('[Product Finder] Widget class:', widgetClass ? widgetClass[1] : '(none)',
+                        'has data-widget_type:', !!$(this).attr('data-widget_type'));
+                });
+            }
 
             // 6. Fallback: directly fire element_ready hooks by widget type.
             //    Handles cases where runReadyTrigger is unavailable or the
@@ -955,20 +965,20 @@
             //    un-initialised wrappers.
             var $swatchWraps = $container.find('.fif-vse-swatches');
             if ($swatchWraps.length) {
-                console.log('[Product Finder] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
+                pfLog('[Product Finder] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
                 $swatchWraps.each(function () {
                     var $wrap = $(this);
 
                     // Already initialised – skip to avoid double-init.
                     if ($wrap.data('fifVseInit')) {
-                        console.log('[Product Finder] Swatch already initialised, skipping');
+                        pfLog('[Product Finder] Swatch already initialised, skipping');
                         return;
                     }
 
                     // Try firing the swatch widget's specific Elementor hook.
                     var $widget = $wrap.closest('.elementor-widget');
                     if ($widget.length && window.elementorFrontend && elementorFrontend.hooks) {
-                        console.log('[Product Finder] Firing swatch hook on widget',
+                        pfLog('[Product Finder] Firing swatch hook on widget',
                             'widget_type:', $widget.attr('data-widget_type'));
                         try {
                             elementorFrontend.hooks.doAction(
@@ -1005,7 +1015,7 @@
                 });
             }
 
-            console.log('[Product Finder] initDynamicContent – complete');
+            pfLog('[Product Finder] initDynamicContent – complete');
         },
 
         renderFallbackResults: function (data) {

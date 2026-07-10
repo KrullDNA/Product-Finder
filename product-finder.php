@@ -3,7 +3,7 @@
  * Plugin Name: Product Finder
  * Plugin URI: https://github.com/KrullDNA/Product-Finder
  * Description: An intelligent WooCommerce Product Finder plugin with multiple-choice quiz format, product ranking, CrocoBlock listing integration, and a full Elementor widget.
- * Version: 1.5.1
+ * Version: 1.5.2
  * Author: KrullDNA
  * Author URI: https://github.com/KrullDNA
  * License: GPL-2.0+
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'PF_VERSION', '1.5.1' );
+define( 'PF_VERSION', '1.5.2' );
 define( 'PF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PF_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );

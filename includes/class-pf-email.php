@@ -31,6 +31,15 @@ class PF_Email {
             wp_send_json_error( array( 'message' => 'Invalid finder.' ) );
         }
 
+        // Only store valid JSON – the token URL is public, so never let
+        // arbitrary strings into the transient.
+        if ( null === json_decode( stripslashes( $answers ), true ) ) {
+            $answers = '[]';
+        }
+        if ( null === json_decode( stripslashes( $followup ), true ) ) {
+            $followup = '{}';
+        }
+
         $token = wp_generate_password( 16, false );
 
         $session_data = array(
@@ -65,10 +74,6 @@ class PF_Email {
         if ( ! is_email( $email ) || empty( $product_ids ) ) {
             wp_send_json_error( array( 'message' => __( 'Invalid email or no products found.', 'product-finder' ) ) );
         }
-
-        // Check if this is a Beauty finder with variation data.
-        $options = get_post_meta( $finder_id, '_pf_options', true );
-        $options = wp_parse_args( (array) $options, array( 'finder_type' => 'cosmeceuticals' ) );
 
         // Accept optional products_data (variation-aware) from the frontend.
         $products_data = array();
