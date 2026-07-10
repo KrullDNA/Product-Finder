@@ -17,6 +17,15 @@ class PF_Ajax {
     private static $matched_categories = array();
 
     /**
+     * Debug log lines and dynamically-enqueued asset URLs collected while
+     * computing results.  Declared explicitly – dynamic properties are
+     * deprecated in PHP 8.2+ and the notices can corrupt AJAX JSON output.
+     */
+    private $_debug       = array();
+    private $_new_styles  = array();
+    private $_new_scripts = array();
+
+    /**
      * Get the matched variation ID for a given parent product.
      * Returns 0 if no specific variation was matched.
      */
@@ -38,10 +47,6 @@ class PF_Ajax {
 
         // Admin: get variations for a product
         add_action( 'wp_ajax_pf_get_variations', array( $this, 'get_variations' ) );
-
-        // Frontend: get finder data
-        add_action( 'wp_ajax_pf_get_finder', array( $this, 'get_finder' ) );
-        add_action( 'wp_ajax_nopriv_pf_get_finder', array( $this, 'get_finder' ) );
 
         // Frontend: compute results
         add_action( 'wp_ajax_pf_compute_results', array( $this, 'compute_results' ) );
@@ -125,49 +130,6 @@ class PF_Ajax {
         }
 
         wp_send_json( $results );
-    }
-
-    /* ────────── Frontend: get finder data (questions) ──────── */
-
-    public function get_finder() {
-        check_ajax_referer( 'pf_frontend_nonce', 'nonce' );
-
-        $finder_id = absint( $_GET['finder_id'] ?? 0 );
-        if ( ! $finder_id ) {
-            wp_send_json_error();
-        }
-
-        $questions = get_post_meta( $finder_id, '_pf_questions', true );
-        $options   = get_post_meta( $finder_id, '_pf_options', true );
-
-        if ( ! is_array( $questions ) ) {
-            $questions = array();
-        }
-
-        // Build safe data for frontend
-        $data = array();
-        foreach ( $questions as $q ) {
-            $q_data = array(
-                'text'        => $q['text'],
-                'instruction' => $q['instruction'] ?? '',
-                'multiple'    => (bool) $q['multiple'],
-                'answers'     => array(),
-            );
-            foreach ( $q['answers'] as $a ) {
-                $image_url = $a['image_id'] ? wp_get_attachment_image_url( $a['image_id'], 'large' ) : '';
-                $q_data['answers'][] = array(
-                    'text'  => $a['text'],
-                    'image' => $image_url,
-                );
-            }
-            $data[] = $q_data;
-        }
-
-        wp_send_json_success( array(
-            'questions' => $data,
-            'options'   => $options,
-            'title'     => get_the_title( $finder_id ),
-        ) );
     }
 
     /* ────────── Frontend: compute results ──────────────────── */
