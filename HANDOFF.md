@@ -1,6 +1,6 @@
 # Product Finder – Session Handover Notes
 
-Last updated: 10 July 2026 (v1.6.0)
+Last updated: 10 July 2026 (v1.6.1 + CRM add-ons v1.0.0)
 
 This file carries context between Claude Code sessions. It can be deleted once no longer useful.
 
@@ -42,6 +42,17 @@ results email with a shareable results URL (30-day transient token, `?pf_results
   (transient `pf_email_rl_<md5(ip)>`, `PF_Email::RATE_LIMIT`).
 - **Duplicate finder (v1.6.0):** row action in the finders list clones the post (draft,
   "(Copy)" suffix) with all meta via `admin_action_pf_duplicate_finder`.
+- **CRM add-ons (v1.6.1):** four standalone add-on plugins in `addons/` (Mailchimp,
+  Campaign Monitor, Klaviyo, ActiveCampaign). Core fires `do_action('pf_lead_recorded',
+  $lead_id, $data)` from `PF_Leads::add_lead()`; add-ons schedule a WP-Cron single event
+  and sync in the background via `PF_Leads::get_lead()`. Each registers a tab on the shared
+  Product Finder → Integrations page (`class-pf-integrations.php`, `pf_integrations` filter,
+  page only appears when ≥1 add-on active). All have a "consent only" toggle (default on)
+  and a last-sync status row. Data sent: Klaviyo gets full quiz data as profile properties;
+  Campaign Monitor sends it as custom fields (must be pre-created on the list:
+  ProductFinder/ProductFinderAnswers/ProductFinderProducts); Mailchimp gets email + tag;
+  ActiveCampaign gets email + list. Payload builders are pure static methods with tests
+  (see scratchpad test harness pattern).
 - **Debugging:** frontend console logging is gated behind `?pf_debug=1` in the page URL.
 
 ## State at handover

@@ -93,7 +93,53 @@ class PF_Leads {
             array( '%d', '%s', '%d', '%s', '%s', '%s' )
         );
 
-        return $inserted ? (int) $wpdb->insert_id : false;
+        if ( ! $inserted ) {
+            return false;
+        }
+
+        $lead_id = (int) $wpdb->insert_id;
+
+        /**
+         * Fires after a lead has been stored. Integration add-ons (Mailchimp,
+         * Klaviyo, …) hook this to sync the lead to external services.
+         *
+         * @param int   $lead_id Row ID in the leads table.
+         * @param array $data    finder_id, email, consent (bool), answers, products.
+         */
+        do_action( 'pf_lead_recorded', $lead_id, array(
+            'finder_id' => absint( $finder_id ),
+            'email'     => sanitize_email( $email ),
+            'consent'   => (bool) $consent,
+            'answers'   => $answers,
+            'products'  => $products,
+        ) );
+
+        return $lead_id;
+    }
+
+    /**
+     * Fetch a single lead as an array with answers/products decoded.
+     * Used by integration add-ons that sync in a background cron job.
+     *
+     * @return array|null
+     */
+    public static function get_lead( $lead_id ) {
+        global $wpdb;
+
+        $row = $wpdb->get_row(
+            $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %d', absint( $lead_id ) ), // phpcs:ignore WordPress.DB.PreparedSQL
+            ARRAY_A
+        );
+        if ( ! $row ) {
+            return null;
+        }
+
+        $row['finder_id'] = (int) $row['finder_id'];
+        $row['consent']   = (bool) $row['consent'];
+        $row['answers']   = json_decode( (string) $row['answers'], true ) ?: array();
+        $row['products']  = json_decode( (string) $row['products'], true ) ?: array();
+
+        return $row;
     }
 
     /**
@@ -172,10 +218,11 @@ class PF_Leads {
     }
 
     /**
-     * Flatten a stored answers JSON blob into "Q: A, B | Q: C" text.
+     * Flatten a stored answers JSON blob (or already-decoded array) into
+     * "Q: A, B | Q: C" text. Public so integration add-ons can reuse it.
      */
-    private static function answers_to_text( $answers_json ) {
-        $rows = json_decode( (string) $answers_json, true );
+    public static function answers_to_text( $answers_json ) {
+        $rows = is_array( $answers_json ) ? $answers_json : json_decode( (string) $answers_json, true );
         if ( ! is_array( $rows ) ) {
             return '';
         }
@@ -189,10 +236,11 @@ class PF_Leads {
     }
 
     /**
-     * Flatten a stored products JSON blob into "Name (category), …" text.
+     * Flatten a stored products JSON blob (or already-decoded array) into
+     * "Name (category), …" text. Public so integration add-ons can reuse it.
      */
-    private static function products_to_text( $products_json ) {
-        $rows = json_decode( (string) $products_json, true );
+    public static function products_to_text( $products_json ) {
+        $rows = is_array( $products_json ) ? $products_json : json_decode( (string) $products_json, true );
         if ( ! is_array( $rows ) ) {
             return '';
         }
