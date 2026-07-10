@@ -435,6 +435,25 @@
     margin-top: 10px;
 }
 
+/* Marketing consent checkbox */
+.pf-consent-label {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--pf-text-light);
+    cursor: pointer;
+    text-align: left;
+}
+
+.pf-consent-label input {
+    margin: 3px 0 0;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
 /* === Loading Screen === */
 
 .pf-loading-screen {

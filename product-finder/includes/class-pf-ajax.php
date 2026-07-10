@@ -187,6 +187,10 @@ class PF_Ajax {
             'finder_type'      => 'cosmeceuticals',
         ) );
 
+        // $options is echoed back in the JSON response – never expose the
+        // owner's notification address to visitors.
+        unset( $options['notify_email'] );
+
         $is_beauty = ( 'beauty' === ( $options['finder_type'] ?? 'cosmeceuticals' ) );
 
         if ( ! is_array( $questions ) ) {

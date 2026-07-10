@@ -68,7 +68,13 @@ class PF_Frontend {
             'cols_desktop'     => 3,
             'cols_tablet'      => 2,
             'cols_mobile'      => 1,
+            'enable_consent'   => 1,
+            'consent_text'     => '',
         ) );
+
+        $consent_text = ! empty( $options['consent_text'] )
+            ? $options['consent_text']
+            : __( "I'd like to receive news and offers", 'product-finder' );
 
         wp_enqueue_style( 'pf-frontend' );
         wp_enqueue_script( 'pf-frontend' );
@@ -161,9 +167,13 @@ class PF_Frontend {
             $inline_data[] = $q_data;
         }
 
+        // Admin-only settings must not end up in the public markup.
+        $public_options = $options;
+        unset( $public_options['notify_email'] );
+
         ob_start();
         ?>
-        <div class="pf-finder" id="pf-finder-<?php echo esc_attr( $finder_id ); ?>" data-finder-id="<?php echo esc_attr( $finder_id ); ?>" data-questions="<?php echo esc_attr( wp_json_encode( $inline_data ) ); ?>" data-options="<?php echo esc_attr( wp_json_encode( $options ) ); ?>"<?php
+        <div class="pf-finder" id="pf-finder-<?php echo esc_attr( $finder_id ); ?>" data-finder-id="<?php echo esc_attr( $finder_id ); ?>" data-questions="<?php echo esc_attr( wp_json_encode( $inline_data ) ); ?>" data-options="<?php echo esc_attr( wp_json_encode( $public_options ) ); ?>"<?php
             if ( ! empty( $atts['loading_heading'] ) ) {
                 echo ' data-loading-heading="' . esc_attr( $atts['loading_heading'] ) . '"';
             }
@@ -198,6 +208,12 @@ class PF_Frontend {
                         <input type="email" class="pf-email-input" placeholder="">
                         <button type="button" class="pf-btn pf-btn-primary pf-send-email"></button>
                     </div>
+                    <?php if ( ! empty( $options['enable_consent'] ) ) : ?>
+                        <label class="pf-consent-label">
+                            <input type="checkbox" class="pf-consent-checkbox" value="1">
+                            <span><?php echo esc_html( $consent_text ); ?></span>
+                        </label>
+                    <?php endif; ?>
                     <button type="button" class="pf-btn pf-btn-link pf-skip-email"></button>
                     <div class="pf-email-message" style="display:none;"></div>
                 </div>
